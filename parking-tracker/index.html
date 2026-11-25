@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parking Spot Availability Tracker — Prototype</title>
+<style>
+:root{
+  --ink:#16222b; --ink2:#4a5863; --mute:#5f6d77; --line:#dfe5e9; --bg:#f3f5f7; --card:#fff;
+  --pri:#0e5e6f; --pri2:#0a4855; --priSoft:#e3f1f3;
+  --green:#249a52; --yellow:#f3c623; --orange:#ee8a1f; --red:#c83b3b; --grey:#a3adb5; --acc:#1d4ed8;
+  --radius:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe UI",Tahoma,Arial,sans-serif;font-size:15px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--pri)}
+svg.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+[dir=rtl] svg.ic.flip{transform:scaleX(-1)}
+
+/* ---------- top bar ---------- */
+.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:12px 20px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;margin-inline-end:auto}
+.logo{width:34px;height:34px;border-radius:9px;background:var(--pri);color:#fff;display:grid;place-items:center;font-weight:800;font-size:16px}
+.brand small{display:block;font-weight:500;color:var(--mute);font-size:12px}
+.roles{display:flex;gap:6px;background:var(--bg);padding:4px;border-radius:12px}
+.roles button{border:0;background:transparent;padding:8px 14px;border-radius:9px;font-weight:600;color:var(--ink2);display:flex;gap:6px;align-items:center}
+.roles button small{font-weight:500;color:var(--mute);font-size:12px}
+.roles button.on{background:#fff;color:var(--pri);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.langbtn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 12px;display:flex;gap:6px;align-items:center;font-weight:600}
+
+/* ---------- stage ---------- */
+.stage{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;padding:24px;max-width:1500px;margin:0 auto;align-items:start}
+.devwrap{display:flex;justify-content:center;min-width:0}
+@media (max-width:1050px){.stage{grid-template-columns:1fr}}
+
+/* ---------- phone ---------- */
+.phone{width:390px;max-width:100%;height:clamp(640px,calc(100vh - 110px),820px);border-radius:44px;background:#0f1418;padding:12px;box-shadow:0 18px 50px rgba(15,30,40,.25)}
+.screen{position:relative;height:100%;border-radius:34px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column}
+.appbar{display:flex;align-items:center;gap:10px;padding:18px 16px 10px;background:#fff;border-bottom:1px solid var(--line)}
+.appbar h1{font-size:17px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconbtn{border:0;background:var(--bg);width:40px;height:40px;border-radius:12px;display:grid;place-items:center;position:relative;color:var(--ink2)}
+.dot{position:absolute;top:5px;inset-inline-end:5px;min-width:17px;height:17px;border-radius:9px;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;padding:0 4px}
+.content{flex:1;overflow-y:auto;padding:14px 14px 20px}
+.tabbar{display:flex;background:#fff;border-top:1px solid var(--line);padding:6px 6px 14px}
+.tabbar button{flex:1;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11.5px;font-weight:600;color:var(--mute);padding:6px 0;border-radius:10px;position:relative;min-height:48px}
+.tabbar button.on{color:var(--pri)}
+.tabbar .dot{top:2px;inset-inline-end:calc(50% - 20px)}
+
+/* ---------- desktop ---------- */
+.desk{width:100%;max-width:1150px;background:#fff;border-radius:14px;box-shadow:0 18px 50px rgba(15,30,40,.18);overflow:hidden;border:1px solid var(--line)}
+.deskbar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#e9edf0;border-bottom:1px solid var(--line)}
+.deskbar i{width:11px;height:11px;border-radius:50%;background:#c9d0d5;display:block}
+.deskbar .url{flex:1;margin-inline-start:10px;background:#fff;border-radius:8px;padding:5px 12px;font-size:13px;color:var(--mute);direction:ltr;text-align:left}
+.dapp{display:grid;grid-template-columns:220px 1fr;min-height:720px}
+.side{background:#0f2f37;color:#d6e6ea;padding:18px 12px;display:flex;flex-direction:column;gap:4px}
+.side .who{padding:6px 10px 16px;font-size:13px;color:#a9c3ca}
+.side .who b{display:block;color:#fff;font-size:15px}
+.side button{border:0;background:transparent;color:#d6e6ea;display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:10px;font-weight:600;text-align:start}
+.side button.on{background:#1d4b56;color:#fff}
+.side .sp{flex:1}
+.dmain{padding:22px 26px;overflow:auto;max-height:780px;min-width:0}
+.dmain h2{margin:0 0 4px;font-size:21px}
+.dmain .sub{color:var(--mute);margin:0 0 18px;font-size:13.5px}
+
+/* ---------- common ---------- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:12px}
+.card h3{margin:0 0 8px;font-size:15px}
+.muted{color:var(--mute)}
+.small{font-size:13px}
+.row{display:flex;gap:8px;align-items:center}
+.wrap{flex-wrap:wrap}
+.grow{flex:1}
+.btn{border:0;background:var(--pri);color:#fff;border-radius:12px;padding:11px 14px;font-weight:700;display:inline-flex;gap:8px;align-items:center;justify-content:center;min-height:44px;text-decoration:none}
+.btn:hover{background:var(--pri2)}
+.btn.sec{background:#fff;color:var(--pri);border:1.5px solid var(--pri)}
+.btn.sec:hover{background:var(--priSoft)}
+.btn.ghost{background:var(--bg);color:var(--ink2)}
+.btn.danger{background:var(--red)}
+.btn.small{min-height:34px;padding:6px 10px;font-size:13px;border-radius:9px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.full{width:100%}
+.stack{display:flex;flex-direction:column;gap:8px}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.field label{font-size:13px;font-weight:600;color:var(--ink2)}
+.field input,.field select,.field textarea{border:1.5px solid var(--line);border-radius:11px;padding:10px 12px;background:#fff;min-height:44px}
+.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--pri);border-color:var(--pri)}
+.check{display:flex;gap:8px;align-items:center;font-size:14px;margin-bottom:12px}
+.check input{width:20px;height:20px}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--bg);color:var(--ink2);white-space:nowrap}
+.pill.g{background:#dcf2e4;color:#16693a}.pill.y{background:#fdf3c9;color:#7a5d00}.pill.o{background:#fde5cc;color:#8a4a00}.pill.r{background:#f8dede;color:#9b2323}
+.pill.b{background:#dfe7fd;color:#1d3fa8}.pill.gr{background:#e6e9ec;color:#4a5863}
+.sw{width:12px;height:12px;border-radius:4px;display:inline-block;flex:none}
+.sw.green{background:var(--green)}.sw.yellow{background:var(--yellow)}.sw.orange{background:var(--orange)}.sw.red{background:var(--red)}.sw.grey{background:var(--grey)}
+.sw.acc{background:#fff;border:2px solid var(--acc)}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:12px;color:var(--ink2);margin:8px 2px 4px}
+.legend span{display:flex;gap:6px;align-items:center}
+.toast{position:absolute;left:14px;right:14px;top:84px;background:#13262e;color:#fff;padding:12px 14px;border-radius:12px;font-size:13.5px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:40}
+.toast.bad{background:#7c2020}
+.dtoast{position:fixed;top:auto;bottom:24px;left:50%;right:auto;transform:translateX(-50%);width:max-content;max-width:520px;z-index:60}
+.empty{text-align:center;padding:30px 10px;color:var(--mute)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px}
+.kv dt{color:var(--mute)} .kv dd{margin:0;font-weight:600}
+.notice{background:var(--priSoft);color:#0b4552;border-radius:12px;padding:10px 12px;font-size:13px}
+.notice.warn{background:#fdf0dc;color:#7a4300}
+.notice.bad{background:#f8e1e1;color:#8a1f1f}
+.notice.ok{background:#dcf2e4;color:#16693a}
+
+/* login */
+.login{flex:1;display:flex;flex-direction:column;justify-content:center;padding:26px 22px}
+.login .logo{width:56px;height:56px;border-radius:16px;font-size:24px;margin-bottom:14px}
+.login h2{margin:0 0 4px;font-size:22px}
+.login p{margin:0 0 20px;color:var(--mute);font-size:14px}
+
+/* home choices */
+.choice{width:100%;border:1.5px solid var(--line);background:#fff;border-radius:16px;padding:16px;display:flex;gap:14px;align-items:center;text-align:start;margin-bottom:10px}
+.choice:hover{border-color:var(--pri)}
+.choice .cico{width:48px;height:48px;border-radius:14px;background:var(--priSoft);color:var(--pri);display:grid;place-items:center;flex:none}
+.choice .cico svg{width:26px;height:26px}
+.choice b{display:block;font-size:15.5px}
+.choice span{font-size:13px;color:var(--mute)}
+.lotrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line);width:100%;background:none;border-left:0;border-right:0;border-bottom:0;text-align:start}
+.lotrow:first-of-type{border-top:0}
+.bar{height:7px;border-radius:5px;background:#e8ecef;overflow:hidden;width:70px}
+.bar i{display:block;height:100%;background:var(--green)}
+.bgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.bbtn{border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:10px;text-align:start;font-weight:600;font-size:13.5px;display:flex;gap:8px;align-items:center;min-height:52px}
+.bbtn.on{border-color:var(--pri);background:var(--priSoft);color:var(--pri2)}
+.big{font-size:30px;font-weight:800;letter-spacing:.5px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:6px}
+.chips button{border:1.5px solid var(--line);background:#fff;border-radius:20px;padding:6px 12px;font-weight:600;font-size:13px;white-space:nowrap;min-height:36px}
+.chips button.on{background:var(--pri);border-color:var(--pri);color:#fff}
+
+/* map */
+svg.map{width:100%;height:auto;display:block;direction:ltr}
+.map .bld rect{fill:#c7d3da;stroke:#9fb0ba}
+.map .bld text{fill:#2c3e48;font-size:9.5px;font-weight:700;text-anchor:middle;pointer-events:none}
+.map .bld.click{cursor:pointer}
+.map .bld.click:hover rect{fill:#b5c6cf}
+.map .bld.hi rect{fill:var(--pri);stroke:var(--pri2)}
+.map .bld.hi text{fill:#fff}
+.map .lotbg{fill:#6f7c84}
+.map .lotlbl{font-size:10px;font-weight:700;fill:#3d4b54}
+.map .sp{stroke:#fff;stroke-width:1;cursor:pointer}
+.map .sp:hover{stroke:#111;stroke-width:1.6}
+.map .sp.green{fill:var(--green)}.map .sp.yellow{fill:var(--yellow)}.map .sp.orange{fill:var(--orange)}.map .sp.red{fill:var(--red)}.map .sp.grey{fill:var(--grey)}
+.map .sp.acc{stroke:var(--acc);stroke-width:2.2}
+.map .sp.sel{stroke:#111;stroke-width:2.6}
+.map .accico{font-size:7px;fill:#fff;text-anchor:middle;pointer-events:none;font-weight:700}
+.map .dim{opacity:.3}
+.map .pulse{fill:none;stroke:var(--pri);stroke-width:2.5;animation:pulse 1.4s ease-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes pulse{0%{opacity:1;transform:scale(.6)}100%{opacity:0;transform:scale(1.4)}}
+
+/* sheet */
+.backdrop{position:absolute;inset:0;background:rgba(10,20,26,.45);z-index:30;display:flex;align-items:flex-end}
+.sheet{background:#fff;width:100%;border-radius:22px 22px 0 0;padding:18px 16px 22px;max-height:85%;overflow-y:auto}
+.sheet h3{margin:0 0 4px;font-size:19px}
+.grab{width:40px;height:5px;border-radius:3px;background:#d4dbe0;margin:-6px auto 12px}
+
+/* booking */
+.cdown{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;direction:ltr;display:inline-block}
+.statusline{display:flex;gap:8px;align-items:center;margin:4px 0 10px;font-weight:600}
+
+/* tables */
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:16px}
+@media (max-width:1250px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.kpi{border:1px solid var(--line);border-radius:12px;padding:12px}
+.kpi b{display:block;font-size:24px}
+.kpi span{font-size:12.5px;color:var(--mute)}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{text-align:start;font-size:12px;color:var(--mute);font-weight:700;padding:8px;border-bottom:1.5px solid var(--line);white-space:nowrap}
+.tbl td{padding:8px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl td:first-child,.tbl td.ltr,.tbl td .pill{white-space:nowrap}
+.tblbox{border:1px solid var(--line);border-radius:12px;overflow:auto;max-height:520px}
+.tblbox .tbl th{position:sticky;top:0;background:#fff}
+.dgrid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr);gap:16px}
+@media (max-width:1250px){.dgrid{grid-template-columns:1fr}}
+.toolbar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px}
+.toolbar .field{margin:0}
+.toolbar .check{margin:0 0 10px}
+.modalbg{position:fixed;inset:0;background:rgba(10,20,26,.45);display:grid;place-items:center;z-index:50;padding:20px}
+.modal{background:#fff;border-radius:16px;padding:20px;width:440px;max-width:100%}
+.modal h3{margin:0 0 14px}
+
+/* panel */
+.panel{display:flex;flex-direction:column;gap:12px}
+.panel .card{margin:0}
+.panel h4{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute)}
+.clock{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;direction:ltr;text-align:start}
+.clockday{color:var(--ink2);font-weight:600;margin-bottom:10px}
+.tbtns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.uclist{display:flex;flex-direction:column;gap:6px}
+.uc{background:var(--priSoft);color:#0b4552;border-radius:10px;padding:7px 10px;font-weight:600;font-size:13px}
+.acct{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line);font-size:13px}
+.acct:first-of-type{border-top:0}
+.acct code{font-size:12px;background:var(--bg);padding:2px 6px;border-radius:6px;direction:ltr}
+.rules{margin:0;padding-inline-start:18px;font-size:13px;color:var(--ink2)}
+.rules li{margin-bottom:4px}
+.scen{display:flex;gap:8px;align-items:center;font-size:13px;padding:6px 0;border-top:1px solid var(--line)}
+.scen:first-of-type{border-top:0}
+.ltr{direction:ltr;unicode-bidi:isolate}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function(){
+'use strict';
+
+/* ================= constants ================= */
+const MIN=60000, HOUR=60*MIN, DAY=24*HOUR;
+const RES_LEN=2*HOUR, EXT_LEN=30*MIN, MAX_EXT=2, GRACE=15*MIN, REMIND=15*MIN, EARLY=10*MIN;
+const LS='parking-tracker-prototype-v2';
+const MAPS='https://www.google.com/maps/dir/?api=1&destination=Al-Baha%20University';
+
+const BLD=[
+ {id:'SCI',n:{en:'College of Science',ar:'كلية العلوم'},s:{en:'Science',ar:'كلية العلوم'},x:150,y:30,w:100,h:70},
+ {id:'CS', n:{en:'College of Computer Science',ar:'كلية علوم الحاسب'},s:{en:'Computer Science',ar:'علوم الحاسب'},x:165,y:110,w:85,h:55},
+ {id:'ENG',n:{en:'College of Engineering',ar:'كلية الهندسة'},s:{en:'Engineering',ar:'الهندسة'},x:174,y:185,w:46,h:140,rot:-12},
+ {id:'MAIN',n:{en:'Main Building',ar:'المبنى الرئيسي'},s:{en:'Main Building',ar:'المبنى الرئيسي'},x:180,y:405,w:80,h:48},
+ {id:'BUS',n:{en:'College of Business Administration',ar:'كلية إدارة الأعمال'},s:{en:'Business',ar:'إدارة الأعمال'},x:15,y:455,w:115,h:62},
+ {id:'MED',n:{en:'College of Medicine',ar:'كلية الطب'},s:{en:'Medicine',ar:'كلية الطب'},x:15,y:590,w:125,h:50}
+];
+const LOTS=[
+ {id:'A',x:258,y:24,cols:6,rows:8,near:'CS'},
+ {id:'B',x:238,y:180,cols:8,rows:6,near:'ENG'},
+ {id:'C',x:236,y:300,cols:7,rows:4,near:'ENG'},
+ {id:'D',x:166,y:470,cols:10,rows:4,near:'MAIN'},
+ {id:'E',x:166,y:557,cols:10,rows:5,near:'MED'}
+];
+const PX=11,PY=17,SW=9,SH=14;
+const cap=L=>L.cols*L.rows, lotW=L=>L.cols*PX+2, lotH=L=>L.rows*PY+3;
+const MAP_H=652;
+const ACC_SPOTS=['A-01','A-02','B-01','B-02','C-01','C-02','D-01','D-02','E-01','E-02'];
+const NAMES=[['Khalid','خالد'],['Omar','عمر'],['Saad','سعد'],['Majed','ماجد'],['Turki','تركي'],['Nawaf','نواف'],['Fahad','فهد'],['Yousef','يوسف'],['Hassan','حسن'],['Ali','علي'],['Ibrahim','إبراهيم'],['Sultan','سلطان'],['Mohammed','محمد'],['Abdullah','عبدالله'],['Rayan','ريان'],['Bandar','بندر'],['Saleh','صالح'],['Ahmed','أحمد'],['Ziyad','زياد'],['Hamad','حمد'],['Mansour','منصور'],['Rakan','راكان'],['Nasser','ناصر'],['Badr','بدر']];
+const FAM=[['Alghamdi','الغامدي'],['Alzahrani','الزهراني'],['Alamri','العمري'],['Alshehri','الشهري'],['Alharthi','الحارثي'],['Alqarni','القرني']];
+
+/* ================= i18n ================= */
+const T={
+app:['Parking Spot Availability Tracker','متتبع توفر المواقف'],
+proto:['Clickable prototype · CENG-1801','نموذج أولي تفاعلي · CENG-1801'],
+appShort:['Campus Parking','مواقف الجامعة'],
+roleStudent:['Student','الطالب'],roleOfficer:['Security Officer','رجل الأمن'],roleAdmin:['Admin','المسؤول'],
+mobile:['mobile','جوال'],web:['web','ويب'],langBtn:['العربية','English'],
+signIn:['Sign in','تسجيل الدخول'],uniId:['University ID','الرقم الجامعي'],officerId:['Officer ID','رقم رجل الأمن'],adminId:['Admin ID','رقم المسؤول'],password:['Password','كلمة المرور'],
+loginSubStudent:['Find and reserve a parking spot on campus.','ابحث عن موقف في الجامعة واحجزه.'],
+loginSubOfficer:['Verify reservations and issue violations.','تحقق من الحجوزات وسجّل المخالفات.'],
+loginSubAdmin:['Manage parking spots and user accounts.','إدارة المواقف وحسابات المستخدمين.'],
+weekNote:['You sign in once a week and stay signed in until the end of the week (Saturday).','تسجّل دخولك مرة وحدة في الأسبوع، وتبقى مسجّل لين نهاية الأسبوع (السبت).'],
+badLogin:['Wrong ID or password.','الرقم أو كلمة المرور غير صحيحة.'],
+suspended:['This account is suspended. Contact the administrator.','هذا الحساب موقوف. تواصل مع المسؤول.'],
+expired:['Your weekly session has ended. Please sign in for the new week.','انتهت جلستك الأسبوعية. سجّل دخولك للأسبوع الجديد.'],
+signedUntil:['Signed in until {d}','مسجّل لين {d}'],signOut:['Sign out','تسجيل الخروج'],
+hello:['Hello, {n}','أهلًا {n}'],whereTo:['Where do you want to park today?','وين تبي توقف اليوم؟'],
+optAuto:['Nearest spot to my building','أقرب موقف للمبنى حقي'],optAutoSub:['Pick your building and get the closest free spot.','اختر المبنى ويطلع لك أقرب موقف فاضي.'],
+optMap:['Parking map','خريطة المواقف'],optMapSub:['See every spot, color-coded in real time.','شوف كل المواقف بالألوان، بشكل مباشر.'],
+byLot:['Availability by lot','التوفر حسب الموقف'],freeOf:['{f} free of {t}','{f} فاضي من {t}'],
+lot:['Lot {l}','مواقف {l}'],near:['Near {b}','قريب من {b}'],yourBooking:['Your reservation','حجزك'],open:['Open','فتح'],
+chooseBld:['Choose your building','اختر المبنى'],inclAcc:['Include accessible spots','إظهار مواقف ذوي الاحتياجات'],
+nearestFor:['Nearest free spot to {b}','أقرب موقف فاضي لـ{b}'],walk:['about {m} m · {w} min walk','تقريبًا {m} م · {w} د مشي'],
+noSpot:['No free spot is available near this building right now.','ما فيه موقف فاضي قريب من هذا المبنى حاليًا.'],
+reserveNow:['Reserve now','احجز الحين'],chooseTime:['Choose a time','اختر وقت'],directions:['Directions','الاتجاهات'],showMap:['Show on map','عرض على الخريطة'],
+free:['Free','فاضي'],soon:['Frees in 1–5 min','يفضى خلال 1–5 د'],mid:['Frees in 5–60 min','يفضى خلال 5 د – ساعة'],long:['Reserved over 1 hour','محجوز أكثر من ساعة'],oos:['Out of service','خارج الخدمة'],accessible:['Accessible spot','موقف ذوي الاحتياجات'],
+allLots:['All lots','الكل'],
+tapHint:['Pick a lot above to zoom in, tap a spot for details, or tap a building to find its nearest spot.','اختر موقف من فوق عشان تكبّر الخريطة، واضغط على أي موقف لتشوف تفاصيله، أو على مبنى لتشوف أقرب موقف له.'],
+spot:['Spot {s}','موقف {s}'],
+stFree:['Free now','فاضي الحين'],stFrees:['Frees in about {d}','يفضى خلال {d} تقريبًا'],stLong:['Reserved for more than 1 hour','محجوز لأكثر من ساعة'],
+stOver:['Occupied — reservation time ended','مشغول — انتهى وقت الحجز'],stManual:['Occupied (no reservation)','مشغول (بدون حجز)'],stMaint:['Out of service','خارج الخدمة'],
+nextRes:['Next reservation at {t}','الحجز الجاي الساعة {t}'],startAt:['Start time','وقت البداية'],now:['Now','الحين'],
+resLen:['Reservation length: 2 hours (you can extend +30 min, twice).','مدة الحجز: ساعتين (تقدر تمدد 30 دقيقة، مرتين).'],
+confirmRes:['Confirm reservation','تأكيد الحجز'],close:['Close','إغلاق'],
+resOk:['Reservation confirmed','تم تأكيد الحجز'],resFail:['Reservation rejected','تم رفض الحجز'],
+why_taken:['This spot is not available for that time. Choose another spot or time.','الموقف غير متاح في هذا الوقت. اختر موقف أو وقت ثاني.'],
+why_oneOnly:['You already have a reservation. Only one reservation per person is allowed.','عندك حجز قائم. مسموح بحجز واحد فقط لكل شخص.'],
+why_notEligible:['This is an accessible spot, and your account is not classified as eligible.','هذا موقف ذوي احتياجات خاصة، وحسابك غير مصنّف كمؤهّل.'],
+why_unavailable:['This spot is out of service.','هذا الموقف خارج الخدمة.'],
+viewBooking:['View my reservation','عرض حجزي'],noBooking:['You have no active reservation.','ما عندك حجز حالي.'],findSpot:['Find a spot','ابحث عن موقف'],
+rs_booked:['Booked — waiting for check-in','محجوز — بانتظار تسجيل الدخول'],rs_active:['Checked in','تم تسجيل الدخول'],rs_ended:['Time ended — please check out','انتهى الوقت — سجّل خروجك'],
+rs_overstay:['Overstay','تجاوز وقت الحجز'],rs_done:['Completed','مكتمل'],rs_cancelled:['Cancelled','ملغي'],rs_noshow:['No-show','لم يحضر'],
+start:['Start','البداية'],end:['End','النهاية'],ext:['Extensions','التمديدات'],extUsed:['{u} of {m} used','{u} من {m}'],
+ciClosesIn:['Check-in closes in','يقفل تسجيل الدخول بعد'],ciOpensAt:['Check-in opens at {t}','يفتح تسجيل الدخول الساعة {t}'],
+timeLeft:['Time left','الوقت المتبقي'],coClosesIn:['Check out within','سجّل خروجك خلال'],overBy:['Over the limit by','متجاوز المهلة بـ'],
+checkIn:['Check in','تسجيل الدخول للموقف'],checkOut:['Check out','تسجيل الخروج من الموقف'],extend:['Extend +30 min','تمديد 30 دقيقة'],
+cancelRes:['Cancel reservation','إلغاء الحجز'],cancelQ:['Cancel this reservation? The spot will become available to others.','تبي تلغي الحجز؟ الموقف بيصير متاح للباقين.'],
+yesCancel:['Yes, cancel','نعم، ألغِ'],keep:['Keep it','لا، خلّه'],
+rulesNote:['You have 15 minutes to check in, and 15 minutes to check out after your time ends.','عندك 15 دقيقة لتسجيل الدخول، و15 دقيقة لتسجيل الخروج بعد انتهاء الوقت.'],
+history:['Reservation history','سجل الحجوزات'],noHistory:['No past reservations yet.','ما فيه حجوزات سابقة.'],
+alerts:['Notifications','الإشعارات'],noAlerts:['No notifications.','ما فيه إشعارات.'],
+tabHome:['Home','الرئيسية'],tabMap:['Map','الخريطة'],tabBooking:['Booking','حجزي'],tabHistory:['History','السجل'],tabAlerts:['Alerts','التنبيهات'],
+uH:['h','س'],uM:['min','د'],
+n_confirm:['Reservation confirmed: spot {spot}, {from}–{to}.','تم تأكيد حجزك: موقف {spot}، من {from} إلى {to}.'],
+n_remind:['Your reservation at {spot} ends at {to}. Extend now?','حجزك في {spot} ينتهي الساعة {to}. تبي تمدّده؟'],
+n_ended:['Your time at {spot} has ended. Check out within 15 minutes to avoid a violation.','انتهى وقتك في {spot}. سجّل خروجك خلال 15 دقيقة عشان ما تنسجّل عليك مخالفة.'],
+n_noshow:['You did not check in to {spot} within 15 minutes, so the reservation was cancelled (no-show).','ما سجّلت دخولك لموقف {spot} خلال 15 دقيقة، فانلغى الحجز (لم يحضر).'],
+n_extOk:['Reservation extended until {to}.','تم تمديد الحجز لين {to}.'],n_extNo:['Extension rejected: {why}','تم رفض التمديد: {why}'],
+x_max:['you have already used both extensions.','استخدمت التمديدين.'],x_next:['the spot is reserved by someone else right after your time.','الموقف محجوز لشخص ثاني بعد وقتك مباشرة.'],x_ended:['your time has already ended.','وقتك انتهى.'],
+n_cancelled:['Reservation at {spot} cancelled. The spot is now available to others.','تم إلغاء حجز {spot}، والموقف صار متاح للباقين.'],
+n_in:['Checked in to {spot}.','تم تسجيل دخولك لموقف {spot}.'],n_out:['Checked out of {spot}. The spot is now shown as free.','تم تسجيل خروجك من {spot}، والموقف صار فاضي.'],
+n_mIn:['A security officer checked you in to {spot}.','رجل الأمن سجّل دخولك لموقف {spot}.'],n_mOut:['A security officer checked you out of {spot}.','رجل الأمن سجّل خروجك من موقف {spot}.'],
+n_viol:['Violation issued: {type} at spot {spot}.','تم تسجيل مخالفة عليك: {type} في موقف {spot}.'],
+v_overstay:['Overstay','تجاوز وقت الحجز'],v_reserved:['Reserved spot misuse','الوقوف في موقف محجوز لغيرك'],v_acc:['Accessible spot misuse','الوقوف في موقف ذوي الاحتياجات بدون أهلية'],
+oTabMap:['Spots','المواقف'],oTabVerify:['Verify','التحقق'],oTabLog:['Violations','المخالفات'],
+oMapHint:['Tap a spot to verify it, check it in or out, or update its status.','اضغط على موقف للتحقق منه، أو تسجيل دخوله وخروجه، أو تحديث حالته.'],
+owner:['Reserved by','محجوز باسم'],plate:['Plate','اللوحة'],checkedInAt:['Checked in at {t}','سجّل دخوله الساعة {t}'],notCheckedIn:['Not checked in yet','ما سجّل دخوله'],
+verifySpot:['Verify reservation','التحقق من الحجز'],manualIn:['Check in manually','تسجيل دخول يدوي'],manualOut:['Check out manually','تسجيل خروج يدوي'],
+markOcc:['Mark as occupied','تحديث: مشغول'],markFree:['Mark as free','تحديث: فاضي'],updStatus:['Update spot status','تحديث حالة الموقف'],
+m_noBooked:['There is no reservation waiting for check-in at this spot.','ما فيه حجز بانتظار تسجيل الدخول في هذا الموقف.'],
+m_alreadyFree:['The spot is already free. No action needed.','الموقف فاضي أصلًا. ما يحتاج أي إجراء.'],
+m_useCheckout:['This spot has an active reservation. Use "Check out manually" instead.','هذا الموقف عليه حجز نشط. استخدم "تسجيل خروج يدوي".'],
+m_inDone:['Checked in manually.','تم تسجيل الدخول يدويًا.'],m_outDone:['Checked out manually. The spot is free.','تم تسجيل الخروج يدويًا. الموقف فاضي.'],m_statusDone:['Spot status updated.','تم تحديث حالة الموقف.'],
+m_hasRes:['This spot has a reservation, so its status follows the reservation.','هذا الموقف عليه حجز، وحالته تتبع الحجز.'],
+vTitle:['Verify a spot before issuing a violation','تحقق من الموقف قبل تسجيل المخالفة'],vSpot:['Spot','الموقف'],vPlate:['Plate of the car you see (optional)','لوحة السيارة الموجودة (اختياري)'],
+vCheck:['Check the system','تحقق من النظام'],vResult:['System result','نتيجة النظام'],resStatus:['Reservation','الحجز'],noRes:['No reservation on this spot now','ما فيه حجز على الموقف الحين'],
+accYes:['Accessible spot','موقف ذوي احتياجات'],plateOwner:['Plate belongs to','اللوحة مسجّلة باسم'],plateUnknown:['Plate not registered in the system','اللوحة غير مسجّلة في النظام'],
+eligibleYes:['eligible for accessible spots','مؤهّل لمواقف ذوي الاحتياجات'],eligibleNo:['not eligible for accessible spots','غير مؤهّل لمواقف ذوي الاحتياجات'],
+sug_overstay:['Possible violation: Overstay — time ended {d} ago and was not extended.','مخالفة محتملة: تجاوز الوقت — انتهى قبل {d} وما تم تمديده.'],
+sug_reserved:['Possible violation: Reserved spot misuse — this car does not belong to the reservation owner.','مخالفة محتملة: الوقوف في موقف محجوز لغيره — السيارة مو لصاحب الحجز.'],
+sug_acc:['Possible violation: Accessible spot misuse — no permit and the account is not eligible.','مخالفة محتملة: موقف ذوي الاحتياجات — بدون تصريح والحساب غير مؤهّل.'],
+sug_valid:['Valid reservation. No violation.','الحجز صحيح. ما فيه مخالفة.'],
+sug_grace:['Time ended {d} ago — still inside the 15-minute check-out grace period. No violation yet.','الوقت انتهى قبل {d} — لسه داخل مهلة الـ15 دقيقة. ما فيه مخالفة للحين.'],
+sug_free:['The spot is free in the system. If a car is there, update the spot status.','الموقف فاضي في النظام. إذا فيه سيارة، حدّث حالة الموقف.'],
+sug_noRes:['A car is parked with no reservation. None of the three violation types applies directly.','سيارة واقفة بدون حجز. ما ينطبق عليها أي نوع من الأنواع الثلاثة مباشرة.'],
+sug_maint:['The spot is out of service.','الموقف خارج الخدمة.'],
+noViol:['No violation','لا توجد مخالفة'],violYes:['Violation confirmed','تأكيد المخالفة'],vType:['Violation type','نوع المخالفة'],suggested:['suggested','مقترح'],
+note:['Note (optional)','ملاحظة (اختياري)'],release:['The car has left — release the spot','السيارة طلعت — حرّر الموقف'],issue:['Issue violation','تسجيل المخالفة'],
+issued:['Violation issued','تم تسجيل المخالفة'],notified:['{n} has been notified.','تم إرسال إشعار لـ{n}.'],recordedPlate:['Recorded against plate {p} (not a registered student).','تم تسجيلها على اللوحة {p} (غير مسجّلة لطالب).'],
+noneIssued:['No violation issued','لم يتم تسجيل مخالفة'],newCheck:['Verify another spot','تحقق من موقف ثاني'],back:['Back','رجوع'],
+noViolations:['No violations issued yet.','ما فيه مخالفات مسجّلة.'],by:['by {n}','بواسطة {n}'],student:['Student','الطالب'],selectSpot:['Select a spot','اختر موقف'],
+needPlate:['Enter the plate of the car to issue this violation.','اكتب لوحة السيارة عشان تسجّل المخالفة.'],
+aDash:['Dashboard','لوحة المعلومات'],aSpots:['Parking spots','المواقف'],aUsers:['User accounts','حسابات المستخدمين'],aViol:['Violations','المخالفات'],
+aDashSub:['Live overview of all campus parking.','نظرة مباشرة على كل مواقف الجامعة.'],
+aSpotsSub:['Add, edit, classify or delete spots so the data matches reality.','أضف أو عدّل أو صنّف أو احذف المواقف عشان البيانات تطابق الواقع.'],
+aUsersSub:['Add, edit, suspend or delete accounts, and classify students as eligible for accessible spots.','أضف أو عدّل أو أوقف أو احذف الحسابات، وصنّف الطلاب المؤهلين لمواقف ذوي الاحتياجات.'],
+aViolSub:['All violations issued by security officers.','كل المخالفات اللي سجّلها رجال الأمن.'],
+kTotal:['Total spots','إجمالي المواقف'],kFree:['Free now','فاضي الحين'],kTaken:['Occupied / reserved','مشغول / محجوز'],kOos:['Out of service','خارج الخدمة'],kAcc:['Accessible spots','مواقف ذوي الاحتياجات'],kViol:['Violations today','مخالفات اليوم'],
+colLot:['Lot','الموقف'],colNear:['Nearest building','أقرب مبنى'],colTotal:['Total','الإجمالي'],colFree:['Free','فاضي'],colTaken:['Taken','مشغول'],colOcc:['Occupancy','الإشغال'],
+liveMap:['Live map','الخريطة المباشرة'],addSpot:['Add spot','إضافة موقف'],filterLot:['Lot','الموقف'],
+colSpot:['Spot','الموقف'],colAcc:['Accessible','ذوي الاحتياجات'],colStatus:['Live status','الحالة الحالية'],colService:['Service','الخدمة'],colActions:['Actions','إجراءات'],
+classify:['Classify as accessible','تصنيف كموقف ذوي احتياجات'],unclassify:['Remove accessible','إلغاء التصنيف'],
+inService:['In service','في الخدمة'],setOos:['Set out of service','إيقاف الخدمة'],setIn:['Return to service','إرجاع للخدمة'],del:['Delete','حذف'],
+delSpotQ:['Delete spot {s}?','حذف موقف {s}؟'],reason:['Reason','السبب'],rDisc:['Discontinued','موقف ملغي'],rMaint:['Under maintenance','تحت الصيانة'],
+cannotDel:['Cannot delete: the spot has an active reservation.','ما يمكن الحذف: الموقف عليه حجز نشط.'],lotFull:['This lot is full.','هذا الموقف ممتلئ.'],
+spotAdded:['Spot {s} added.','تمت إضافة موقف {s}.'],spotDeleted:['Spot {s} deleted.','تم حذف موقف {s}.'],spotSaved:['Spot {s} updated.','تم تحديث موقف {s}.'],
+addUser:['Add account','إضافة حساب'],editUser:['Edit account','تعديل حساب'],search:['Search by name or ID','ابحث بالاسم أو الرقم'],
+colId:['ID','الرقم'],colName:['Name','الاسم'],colRole:['Role','الدور'],colPlate:['Plate','اللوحة'],colElig:['Accessible eligibility','الأهلية لمواقف ذوي الاحتياجات'],colAcct:['Account','الحساب'],
+eligible:['Eligible','مؤهّل'],notEligible:['Not eligible','غير مؤهّل'],makeElig:['Classify as eligible','تصنيف كمؤهّل'],removeElig:['Remove','إلغاء'],
+activeL:['Active','نشط'],suspendedL:['Suspended','موقوف'],suspend:['Suspend','إيقاف'],activate:['Activate','تفعيل'],edit:['Edit','تعديل'],save:['Save','حفظ'],cancel:['Cancel','إلغاء'],
+delUserQ:['Delete account {n}?','حذف حساب {n}؟'],userSaved:['Account saved.','تم حفظ الحساب.'],userDeleted:['Account deleted.','تم حذف الحساب.'],
+idTaken:['This ID already exists.','هذا الرقم موجود.'],fillReq:['Fill in ID, name and password.','عبّئ الرقم والاسم وكلمة المرور.'],userHasRes:['Cannot delete: the user has an active reservation.','ما يمكن الحذف: المستخدم عنده حجز نشط.'],
+perms:['Permissions — Student: reserve and manage own bookings. Security Officer: verify, check in/out manually, update spot status, issue violations. Admin: manage spots and accounts.','الصلاحيات — الطالب: يحجز ويدير حجوزاته. رجل الأمن: يتحقق، ويسجّل الدخول والخروج يدويًا، ويحدّث حالة الموقف، ويسجّل المخالفات. المسؤول: يدير المواقف والحسابات.'],
+colTime:['Time','الوقت'],colType:['Type','النوع'],colOfficer:['Officer','رجل الأمن'],colNote:['Note','ملاحظة'],showing:['{n} accounts','{n} حساب'],
+pClock:['Demo clock','ساعة العرض'],pClockNote:['Move time forward to show the timers: check-in grace, expiry reminder, overstay, weekly sign-in.','قدّم الوقت عشان تعرض المؤقتات: مهلة الدخول، تذكير الانتهاء، تجاوز الوقت، وتسجيل الدخول الأسبوعي.'],
+p5:['+5 min','+5 د'],p15:['+15 min','+15 د'],p60:['+1 hour','+1 ساعة'],pWeek:['Next week','الأسبوع الجاي'],pReset:['Reset demo','إعادة العرض'],
+pShows:['This screen demonstrates','هذي الشاشة توضح'],pAccounts:['Demo accounts (password 1234)','حسابات العرض (كلمة المرور 1234)'],pUse:['Sign in','دخول'],
+pScen:['Officer test cases','حالات اختبار لرجل الأمن'],pTry:['Try','جرّب'],pRules:['Rules built in','القواعد المطبقة'],pLegend:['Map colors (from the system scenario)','ألوان الخريطة (من سيناريو النظام)'],
+r1:['One reservation per person','حجز واحد لكل شخص'],r2:['Reservation 2 hours; extend +30 min, up to 2 times','الحجز ساعتين؛ التمديد 30 د، مرتين بالكثير'],
+r3:['15 min to check in, else no-show','15 د لتسجيل الدخول، وإلا يعتبر لم يحضر'],r4:['15 min to check out after time ends, else violation','15 د لتسجيل الخروج بعد انتهاء الوقت، وإلا مخالفة'],
+r5:['Accessible spots only for eligible accounts','مواقف ذوي الاحتياجات للحسابات المؤهلة فقط'],r6:['Sign in once a week','تسجيل الدخول مرة في الأسبوع'],
+sc1:['Spot B-10 → Overstay','موقف B-10 ← تجاوز الوقت'],sc2:['Spot D-12 + plate RJA 3381 → Reserved spot misuse','موقف D-12 + لوحة RJA 3381 ← موقف محجوز لغيره'],sc3:['Spot C-01 + plate TBN 7742 → Accessible spot misuse','موقف C-01 + لوحة TBN 7742 ← موقف ذوي الاحتياجات'],
+eligTag:['accessible-eligible','مؤهّل لمواقف ذوي الاحتياجات'],
+login:['Log in to the System','تسجيل الدخول للنظام'],
+us1:['US1 · View Available Parking Spots','US1 · عرض المواقف المتاحة'],us2:['US2 · Reserve a New Spot','US2 · حجز موقف جديد'],us3:['US3 · Extend a Reservation','US3 · تمديد الحجز'],
+us4:['US4 · Cancel a Reservation','US4 · إلغاء الحجز'],us5:['US5 · Check Out of a Spot','US5 · تسجيل الخروج من الموقف'],us6:['US6 · Find Spots by Building (Find Nearest Spot)','US6 · البحث حسب المبنى (أقرب موقف)'],
+us7:['US7 · Update Spot Status Manually','US7 · تحديث حالة الموقف يدويًا'],us8:['US8 · Redirect to Google Maps','US8 · التحويل إلى Google Maps'],us9:['US9 · Reservation History','US9 · سجل الحجوزات'],
+us10:['US10 · Reserve/Classify Accessible Spots','US10 · حجز/تصنيف مواقف ذوي الاحتياجات'],us11:['US11 · Issue a Violation','US11 · تسجيل مخالفة'],us12:['US12 · Verify Reservation Status','US12 · التحقق من حالة الحجز'],
+us13:['US13 · Check In to a Spot','US13 · تسجيل الدخول للموقف'],us14:['US14 · Reserved Spot Misuse','US14 · الوقوف في موقف محجوز لغيره'],us15:['US15 · Accessible Spot Misuse','US15 · إساءة استخدام موقف ذوي الاحتياجات'],
+us16:['US16 · Overstay','US16 · تجاوز وقت الحجز'],us17:['US17 · Manage Parking Spots','US17 · إدارة المواقف'],us18:['US18 · Manage User Accounts','US18 · إدارة حسابات المستخدمين'],
+msg:['BPMN messages: confirmation, reminder and rejection notices','رسائل BPMN: التأكيد والتذكير وإشعارات الرفض']
+};
+let lang=(navigator.language||'en').toLowerCase().indexOf('ar')===0?'ar':'en';
+try{const l=localStorage.getItem(LS+'-lang');if(l==='ar'||l==='en')lang=l;}catch(e){}
+function t(k,p){const e=T[k];let s=e?(lang==='ar'?e[1]:e[0]):k;if(p)s=s.replace(/\{(\w+)\}/g,(m,x)=>p[x]!==undefined?p[x]:m);return s;}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+const LOC=()=>lang==='ar'?'ar-SA-u-nu-latn-ca-gregory':'en-GB';
+const fmtT=ms=>new Date(ms).toLocaleTimeString(LOC(),{hour:'2-digit',minute:'2-digit',hour12:false});
+const fmtD=ms=>new Date(ms).toLocaleDateString(LOC(),{weekday:'short',day:'numeric',month:'short'});
+const fmtDT=ms=>fmtD(ms)+' · '+fmtT(ms);
+function fmtDur(ms){const m=Math.max(1,Math.round(ms/MIN));const h=Math.floor(m/60),mm=m%60;return h?(h+' '+t('uH')+(mm?' '+mm+' '+t('uM'):'')):(mm+' '+t('uM'));}
+function fmtClock(ms){ms=Math.max(0,ms);const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return (h?h+':'+String(m).padStart(2,'0'):String(m))+':'+String(x).padStart(2,'0');}
+
+/* ================= icons ================= */
+const IC={home:'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',map:'M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14',ticket:'M3 7h18v3a2 2 0 0 0 0 4v3H3v-3a2 2 0 0 0 0-4zM13 7v10',
+history:'M12 7v5l3 2M21 12a9 9 0 1 1-9-9 9 9 0 0 1 9 9z',bell:'M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0',nav:'M3 11l18-8-8 18-2-8z',
+shield:'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',check:'M5 12l5 5 9-10',search:'M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM21 21l-5-5',list:'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+users:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8',grid:'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
+plus:'M12 5v14M5 12h14',logout:'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',globe:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18',
+alert:'M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',building:'M4 21V5l8-3 8 3v16M9 21v-4h6v4M8 9h.01M12 9h.01M16 9h.01M8 13h.01M12 13h.01M16 13h.01',
+car:'M5 17h14M6 17v2M18 17v2M3 13l2-6h14l2 6v4H3zM7 13h.01M17 13h.01',x:'M6 6l12 12M18 6L6 18',back:'M15 18l-6-6 6-6',phone:'M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM11 18h2',monitor:'M3 4h18v12H3zM8 20h8M12 16v4',
+clock:'M12 7v5l3 2M21 12a9 9 0 1 1-9-9 9 9 0 0 1 9 9z',refresh:'M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5'};
+const ic=(n,cls)=>`<svg class="ic${cls?' '+cls:''}" viewBox="0 0 24 24" aria-hidden="true"><path d="${IC[n]}"/></svg>`;
+
+/* ================= state ================= */
+let S;
+const now=()=>Date.now()+S.offset;
+const user=id=>S.users.find(u=>u.id===id);
+const spotById=id=>S.spots.find(s=>s.id===id);
+const bld=id=>BLD.find(b=>b.id===id);
+const nm=u=>u?esc(u.name[lang]||u.name.en):'—';
+function rng(seed){let s=seed%2147483647;if(s<=0)s+=2147483646;return ()=>{s=s*16807%2147483647;return (s-1)/2147483646;};}
+const pad=n=>String(n).padStart(2,'0');
+function plateGen(R){const L='ABDEGHJKLNRSTUVXZ';let p='';for(let i=0;i<3;i++)p+=L[Math.floor(R()*L.length)];return p+' '+(1000+Math.floor(R()*9000));}
+
+function seed(){
+  const n=Date.now();
+  S={v:1,offset:0,savedAt:n,seq:1000,spots:[],users:[],res:[],viol:[],notif:[],sessions:{student:null,officer:null,admin:null}};
+  LOTS.forEach(L=>{for(let i=0;i<cap(L);i++){const id=L.id+'-'+pad(i+1);S.spots.push({id,lot:L.id,slot:i,acc:ACC_SPOTS.includes(id),maint:id==='E-50',manualOcc:null});}});
+  const U=(id,en,ar,role,plate,extra)=>S.users.push(Object.assign({id,pw:'1234',role,name:{en,ar},plate,eligible:false,suspended:false,fake:false},extra||{}));
+  U('443012345','Abdulaziz Alghamdi','عبدالعزيز الغامدي','student','ABD 2022');
+  U('443054321','Faisal Alzahrani','فيصل الزهراني','student','FSL 1010',{eligible:true});
+  U('SO-1001','Saeed Alamri','سعيد العمري','officer','');
+  U('AD-01','Parking Admin','مسؤول المواقف','admin','');
+  U('443000101','Khalid Alshehri','خالد الشهري','student','KLD 1450',{fake:true});
+  U('443000102','Omar Alharthi','عمر الحارثي','student','OMR 5520',{fake:true});
+  U('443000103','Saad Alqarni','سعد القرني','student','RJA 3381',{fake:true});
+  U('443000104','Majed Alghamdi','ماجد الغامدي','student','TBN 7742',{fake:true});
+  const R=rng(424242);
+  for(let i=0;i<150;i++){const a=NAMES[i%NAMES.length],b=FAM[(i*7)%FAM.length];U('4430002'+String(i).padStart(3,'0'),a[0]+' '+b[0],a[1]+' '+b[1],'student',plateGen(R),{fake:true,eligible:i%9===0});}
+  // past history for the two demo students
+  const H=(uid,spot,daysAgo,h,status)=>{const d=new Date(n-daysAgo*DAY);d.setHours(h,0,0,0);const st=d.getTime();S.res.push({id:'R'+(++S.seq),uid,spot,start:st,end:st+RES_LEN,ext:0,status,checkIn:status==='done'?st+5*MIN:null,checkOut:status==='done'?st+RES_LEN-10*MIN:null,reminded:true,endNotified:true,fake:false});};
+  H('443012345','A-05',1,8,'done');H('443012345','B-02',2,10,'done');H('443012345','C-07',3,9,'cancelled');H('443012345','A-09',6,8,'done');H('443012345','D-04',7,13,'noshow');
+  H('443054321','A-01',1,9,'done');H('443054321','C-02',4,8,'done');
+  seedOccupancy(n);
+}
+const PROTECT=['A-01','A-02','A-03','A-04','A-05','B-10','C-01','D-12'];
+const ENDS=[3,6,12,20,30,45,60,80,100,118];
+function addFake(uid,spot,start,end,status,extra){S.res.push(Object.assign({id:'R'+(++S.seq),uid,spot,start,end,ext:0,status,checkIn:status==='active'?start+2*MIN:null,checkOut:null,reminded:true,endNotified:false,fake:true},extra||{}));}
+function topUp(n){
+  const R=rng(Math.floor(n/MIN)%99991+3);
+  const target=Math.round(S.spots.length*0.5);
+  let taken=S.spots.filter(sp=>{const k=spotState(sp,n).k;return k==='taken'||k==='manual';}).length;
+  const busyU=new Set(S.res.filter(isOpen).map(r=>r.uid));
+  const pool=S.users.filter(u=>u.fake&&/^4430002/.test(u.id)&&!busyU.has(u.id));
+  const cand=S.spots.filter(sp=>!PROTECT.includes(sp.id)&&spotState(sp,n).k==='free'&&!conflict(sp.id,n,n+RES_LEN));
+  for(let i=cand.length-1;i>0;i--){const j=Math.floor(R()*(i+1));[cand[i],cand[j]]=[cand[j],cand[i]];}
+  while(taken<target&&cand.length&&pool.length){
+    const sp=cand.pop();const k=pool.findIndex(u=>!sp.acc||u.eligible);if(k<0)continue;
+    const u=pool.splice(k,1)[0];const e=n+ENDS[Math.floor(R()*ENDS.length)]*MIN;
+    addFake(u.id,sp.id,e-RES_LEN,e,'active');taken++;
+  }
+}
+function ensureScenario(id){
+  const n=now(),sp=spotById(id);if(!sp)return;
+  const clearSpot=()=>S.res.forEach(r=>{if(r.spot===id&&isOpen(r)&&r.fake){r.status='done';r.checkOut=n;}});
+  const freeUser=uid=>S.res.forEach(r=>{if(r.uid===uid&&isOpen(r)){r.status='done';r.checkOut=n;}});
+  sp.maint=false;
+  if(id==='B-10'&&!S.res.some(r=>r.spot===id&&r.status==='active'&&n>r.end+GRACE)){clearSpot();freeUser('443000101');sp.manualOcc=null;addFake('443000101',id,n-140*MIN,n-25*MIN,'active',{stay:true});}
+  if(id==='D-12'&&!S.res.some(r=>r.spot===id&&isOpen(r)&&r.uid==='443000102')){clearSpot();freeUser('443000102');sp.manualOcc=null;addFake('443000102',id,n-6*MIN,n-6*MIN+RES_LEN,'booked',{noAuto:true});}
+  if(id==='C-01'){clearSpot();if(!sp.manualOcc)sp.manualOcc={since:n-30*MIN};}
+}
+function seedOccupancy(n){
+  const R=rng(Math.floor(n/MIN)%99991+17);
+  const add=addFake;
+  // special demo cases for the officer
+  add('443000101','B-10',n-140*MIN,n-25*MIN,'active',{stay:true});            // overstay
+  add('443000102','D-12',n-6*MIN,n-6*MIN+RES_LEN,'booked',{noAuto:true});     // waiting for check-in (reserved misuse case)
+  const c1=spotById('C-01'); if(c1) c1.manualOcc={since:n-30*MIN};             // car in accessible spot, no reservation
+  const keepFree=PROTECT.concat(['E-50']);
+  const pool=S.users.filter(u=>u.fake&&/^4430002/.test(u.id));
+  let pi=0;
+  const ends=ENDS;
+  S.spots.forEach(sp=>{
+    if(keepFree.includes(sp.id)||sp.maint||pi>=pool.length)return;
+    const r=R();
+    if(r<0.52){const u=pool[pi++];if(sp.acc&&!u.eligible)return;const e=n+ends[Math.floor(R()*ends.length)]*MIN;add(u.id,sp.id,Math.min(n-10*MIN,e-RES_LEN+Math.floor(R()*40)*MIN),e,'active');}
+    else if(r<0.6){const u=pool[pi++];if(sp.acc&&!u.eligible)return;const s=n+[25,40,55,80][Math.floor(R()*4)]*MIN;add(u.id,sp.id,s,s+RES_LEN,'booked');}
+  });
+}
+function save(){try{S.savedAt=Date.now();localStorage.setItem(LS,JSON.stringify(S));}catch(e){}}
+function load(){try{const raw=localStorage.getItem(LS);if(raw){const x=JSON.parse(raw);if(x&&x.v===1&&Date.now()-x.savedAt<12*HOUR){S=x;return;}}}catch(e){}seed();}
+
+/* ================= domain logic ================= */
+const isOpen=r=>r.status==='booked'||r.status==='active';
+function openRes(uid){return S.res.find(r=>r.uid===uid&&isOpen(r));}
+function spotState(sp,n){
+  n=n||now();
+  if(sp.maint)return {k:'maint'};
+  const r=S.res.find(x=>x.spot===sp.id&&(x.status==='active'||(x.status==='booked'&&x.start<=n)));
+  if(r)return {k:'taken',r,left:r.end-n};
+  if(sp.manualOcc)return {k:'manual'};
+  return {k:'free',next:nextRes(sp.id,n)};
+}
+function nextRes(id,n){let best=null;S.res.forEach(r=>{if(r.spot===id&&r.status==='booked'&&r.start>n&&(!best||r.start<best.start))best=r;});return best;}
+function color(st){if(st.k==='maint')return 'grey';if(st.k==='free')return 'green';if(st.k==='manual')return 'red';const l=st.left;if(l<0)return 'red';if(l<=5*MIN)return 'yellow';if(l<=HOUR)return 'orange';return 'red';}
+function statusText(st){
+  if(st.k==='maint')return t('stMaint');if(st.k==='free')return t('stFree');if(st.k==='manual')return t('stManual');
+  if(st.left<0)return t('stOver');if(st.left>HOUR)return t('stLong');return t('stFrees',{d:fmtDur(st.left)});
+}
+const pillCls={green:'g',yellow:'y',orange:'o',red:'r',grey:'gr'};
+function conflict(id,s,e,ex){
+  const n=now(),sp=spotById(id);
+  if(!sp||sp.maint)return true;
+  if(sp.manualOcc&&s<n+30*MIN)return true;
+  return S.res.some(r=>r.spot===id&&r.id!==ex&&isOpen(r)&&r.start<e&&s<Math.max(r.end,r.status==='active'?n:0)+GRACE);
+}
+function notify(uid,key,p){const u=user(uid);if(!u||u.fake)return;S.notif.push({id:++S.seq,uid,t:now(),key,p:p||{},read:false});}
+function notifText(nf){const p=Object.assign({},nf.p);if(p.from)p.from=fmtT(p.from);if(p.to)p.to=fmtT(p.to);if(p.why)p.why=t(p.why);if(p.type)p.type=t(p.type);return t(nf.key,p);}
+function book(uid,spotId,start){
+  const u=user(uid),sp=spotById(spotId),n=now();
+  if(!sp||sp.maint)return {ok:false,why:'why_unavailable'};
+  if(sp.acc&&!u.eligible)return {ok:false,why:'why_notEligible'};
+  if(openRes(uid))return {ok:false,why:'why_oneOnly'};
+  const s=Math.max(start,n),e=s+RES_LEN;
+  if(conflict(spotId,s,e))return {ok:false,why:'why_taken'};
+  const r={id:'R'+(++S.seq),uid,spot:spotId,start:s,end:e,ext:0,status:'booked',checkIn:null,checkOut:null,reminded:false,endNotified:false,fake:false,created:n};
+  S.res.push(r);notify(uid,'n_confirm',{spot:spotId,from:s,to:e});
+  return {ok:true,r};
+}
+function extendRes(rid){
+  const r=S.res.find(x=>x.id===rid),n=now();
+  if(!r||!isOpen(r))return false;
+  if(n>=r.end){notify(r.uid,'n_extNo',{why:'x_ended'});return false;}
+  if(r.ext>=MAX_EXT){notify(r.uid,'n_extNo',{why:'x_max'});return false;}
+  if(conflict(r.spot,r.end,r.end+EXT_LEN,r.id)){notify(r.uid,'n_extNo',{why:'x_next'});return false;}
+  r.end+=EXT_LEN;r.ext++;r.reminded=false;notify(r.uid,'n_extOk',{to:r.end});return true;
+}
+function engine(){
+  const n=now();let ch=false;
+  S.res.forEach(r=>{
+    if(r.status==='booked'){
+      if(r.fake&&!r.noAuto&&n>=r.start){r.status='active';r.checkIn=n;ch=true;}
+      else if(n>r.start+GRACE){r.status='noshow';notify(r.uid,'n_noshow',{spot:r.spot});ch=true;}
+    }
+    if(r.status==='active'){
+      if(!r.reminded&&n>=r.end-REMIND&&n<r.end){r.reminded=true;notify(r.uid,'n_remind',{spot:r.spot,to:r.end,rid:r.id});ch=true;}
+      if(n>=r.end){
+        if(r.fake&&!r.stay){r.status='done';r.checkOut=r.end;ch=true;}
+        else if(!r.endNotified){r.endNotified=true;notify(r.uid,'n_ended',{spot:r.spot});ch=true;}
+      }
+    }
+  });
+  if(!S.lastTop)S.lastTop=n;
+  if(n-S.lastTop>=5*MIN||n<S.lastTop){topUp(n);S.lastTop=n;ch=true;}
+  ['student','officer','admin'].forEach(role=>{const s=S.sessions[role];if(s&&n>s.exp){S.sessions[role]=null;ui[role].expired=true;ch=true;}});
+  return ch;
+}
+function endOfWeek(n){const d=new Date(n);d.setDate(d.getDate()+(6-d.getDay()));d.setHours(23,59,59,999);return d.getTime();}
+function phase(r,n){if(r.status==='booked')return n<r.start-EARLY?'w':'o';return n<r.end-REMIND?'a':n<r.end?'r':n<r.end+GRACE?'e':'x';}
+function sig(){const n=now();return S.spots.map(sp=>color(spotState(sp,n))[0]).join('')+'|'+S.res.filter(r=>!r.fake&&isOpen(r)).map(r=>r.id+r.status+phase(r,n)).join(',')+'|'+S.notif.length;}
+
+/* verify (US12) */
+function verify(spotId,plate){
+  const n=now(),sp=spotById(spotId);if(!sp)return null;
+  const st=spotState(sp,n);plate=(plate||'').trim().toUpperCase();
+  const po=plate?S.users.find(u=>u.plate&&u.plate.toUpperCase()===plate):null;
+  const out={spot:sp.id,acc:sp.acc,st,plate,plateOwner:po?po.id:null,sug:'valid',d:0};
+  if(st.k==='maint'){out.sug='maint';return out;}
+  if(st.k==='free'){out.sug='free';return out;}
+  if(st.k==='manual'){
+    if(sp.acc&&(!po||!po.eligible))out.sug='acc';else out.sug='noRes';return out;
+  }
+  const r=st.r;out.res=r.id;out.owner=r.uid;
+  if(n>r.end+GRACE){out.sug='overstay';out.d=n-r.end;return out;}
+  if(plate&&(!po||po.id!==r.uid)){out.sug=(sp.acc&&(!po||!po.eligible))?'acc':'reserved';return out;}
+  if(n>r.end){out.sug='grace';out.d=n-r.end;return out;}
+  return out;
+}
+
+/* ================= UI state ================= */
+const ui={
+  role:'student',
+  student:{screen:'home',sheet:null,autoB:null,inclAcc:true,lot:'all',toast:null,err:null,expired:false},
+  officer:{screen:'map',sheet:null,v:{step:'form',spot:'',plate:'',res:null,type:null,done:null},toast:null,err:null,expired:false},
+  admin:{screen:'dash',modal:null,q:'',lot:'all',toast:null,err:null,expired:false}
+};
+let toastTimer=null;
+function toast(role,text,bad){ui[role].toast={text,bad:!!bad};clearTimeout(toastTimer);toastTimer=setTimeout(()=>{ui[role].toast=null;render();},3800);}
+
+/* ================= map ================= */
+function spotXY(sp){const L=LOTS.find(l=>l.id===sp.lot);const c=sp.slot%L.cols,r=Math.floor(sp.slot/L.cols);return {x:L.x+2+c*PX,y:L.y+2.5+r*PY,w:SW,h:SH};}
+function mapSVG(o){
+  o=o||{};const n=now();
+  let vb=`0 0 360 ${MAP_H}`;
+  if(o.zoom&&o.lot&&o.lot!=='all'){const L=LOTS.find(l=>l.id===o.lot);if(L){const w=Math.max(lotW(L)+50,180),h=lotH(L)+56,cx=L.x+lotW(L)/2;vb=`${cx-w/2} ${L.y-30} ${w} ${h}`;}}
+  let s=`<svg class="map" viewBox="${vb}" role="img" aria-label="${esc(t('liveMap'))}">`;
+  s+=`<rect x="0" y="0" width="360" height="${MAP_H}" rx="12" fill="#efeae0"/>`;
+  s+=`<path d="M0 20 L96 20 C112 80 104 150 120 210 C128 260 118 300 110 330 L0 360 Z" fill="#ddd2bd"/>`;
+  s+=`<path d="M300 560 C330 590 340 620 350 652 L300 652 Z" fill="#ddd2bd"/>`;
+  const road=(d,w)=>{s+=`<path d="${d}" fill="none" stroke="#cdd4d8" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;};
+  road('M0 7 H360',14);road('M340 0 C338 220 336 430 322 652',16);
+  road('M124 7 L140 140 L150 300 L160 385',12);road('M160 385 L150 652',12);
+  road('M160 385 L338 395',12);road('M160 385 C110 405 70 425 0 440',10);
+  s+=`<circle cx="160" cy="385" r="15" fill="#cdd4d8"/><circle cx="160" cy="385" r="6" fill="#bfcbb7"/>`;
+  BLD.forEach(b=>{
+    const hi=o.hiBld===b.id,cl=o.bldAct?' click':'',cx=b.x+b.w/2,cy=b.y+b.h/2;
+    s+=`<g class="bld${hi?' hi':''}${cl}"${o.bldAct?` data-act="${o.bldAct}" data-arg="${b.id}"`:''}><rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="6"${b.rot?` transform="rotate(${b.rot} ${cx} ${cy})"`:''}/><text x="${cx}" y="${cy+4}">${esc(b.s[lang])}</text></g>`;
+  });
+  LOTS.forEach(L=>{
+    const dim=o.lot&&o.lot!=='all'&&o.lot!==L.id;
+    s+=`<g${dim?' class="dim"':''}><text class="lotlbl" x="${L.x}" y="${L.y-4}">${esc(t('lot',{l:L.id}))}</text><rect class="lotbg" x="${L.x}" y="${L.y}" width="${lotW(L)}" height="${lotH(L)}" rx="4"/>`;
+    S.spots.filter(sp=>sp.lot===L.id).forEach(sp=>{
+      const g=spotXY(sp),c=color(spotState(sp,n));
+      s+=`<rect class="sp ${c}${sp.acc?' acc':''}${o.sel===sp.id?' sel':''}" x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="2.5" data-act="${o.spotAct||'spot'}" data-arg="${sp.id}"><title>${sp.id}</title></rect>`;
+      if(sp.acc)s+=`<text class="accico" x="${g.x+g.w/2}" y="${g.y+g.h/2+3.5}">♿</text>`;
+    });
+    s+=`</g>`;
+  });
+  if(o.pulse){const sp=spotById(o.pulse);if(sp){const g=spotXY(sp);s+=`<circle class="pulse" cx="${g.x+g.w/2}" cy="${g.y+g.h/2}" r="15"/>`;}}
+  return s+'</svg>';
+}
+function legend(){return `<div class="legend"><span><i class="sw green"></i>${t('free')}</span><span><i class="sw yellow"></i>${t('soon')}</span><span><i class="sw orange"></i>${t('mid')}</span><span><i class="sw red"></i>${t('long')}</span><span><i class="sw grey"></i>${t('oos')}</span><span><i class="sw acc"></i>${t('accessible')}</span></div>`;}
+function lotStats(id){const n=now();const sp=S.spots.filter(s=>s.lot===id);const f=sp.filter(s=>spotState(s,n).k==='free').length;const o=sp.filter(s=>s.maint).length;return {t:sp.length,f,o,taken:sp.length-f-o,acc:sp.filter(s=>s.acc).length};}
+function nearest(bid,u,inclAcc){
+  const b=bld(bid),n=now(),cx=b.x+b.w/2,cy=b.y+b.h/2;let best=null;
+  S.spots.forEach(sp=>{
+    if(spotState(sp,n).k!=='free')return;
+    if(sp.acc&&!(u.eligible&&inclAcc))return;
+    if(conflict(sp.id,n,n+RES_LEN))return;
+    const g=spotXY(sp),d=Math.hypot(g.x+7-cx,g.y+11-cy);
+    if(!best||d<best.d)best={sp,d};
+  });
+  return best;
+}
+const dirBtn=(cls)=>`<a class="btn ${cls||'sec'}" href="${MAPS}" target="_blank" rel="noopener" data-act="dir">${ic('nav')}${t('directions')}</a>`;
+
+/* ================= student app ================= */
+function loginScreen(role){
+  const st=ui[role];
+  const idL=role==='student'?t('uniId'):role==='officer'?t('officerId'):t('adminId');
+  const sub=role==='student'?t('loginSubStudent'):role==='officer'?t('loginSubOfficer'):t('loginSubAdmin');
+  return `<form class="login" data-form="login" data-role="${role}" autocomplete="off">
+    <div class="logo">P</div><h2>${t('app')}</h2><p>${sub}</p>
+    ${st.expired?`<div class="notice warn" style="margin-bottom:14px">${t('expired')}</div>`:''}
+    ${st.err?`<div class="notice bad" style="margin-bottom:14px">${t(st.err)}</div>`:''}
+    <div class="field"><label for="lg-id-${role}">${idL}</label><input id="lg-id-${role}" name="uid" inputmode="${role==='student'?'numeric':'text'}" required></div>
+    <div class="field"><label for="lg-pw-${role}">${t('password')}</label><input id="lg-pw-${role}" name="pw" type="password" required></div>
+    <button class="btn full" type="submit">${t('signIn')}</button>
+    ${role!=='admin'?`<p class="small" style="margin-top:14px">${t('weekNote')}</p>`:''}
+  </form>`;
+}
+function stHome(u){
+  const r=openRes(u.id);
+  let h=`<h2 style="margin:2px 0 2px;font-size:20px">${t('hello',{n:nm(u).split(' ')[0]})}</h2><p class="muted small" style="margin:0 0 14px">${t('whereTo')}</p>`;
+  if(r){const st=resState(r);h+=`<div class="card" style="border-color:var(--pri)"><div class="row"><div class="grow"><div class="small muted">${t('yourBooking')}</div><b style="font-size:18px">${t('spot',{s:r.spot})}</b> <span class="pill ${st.pill}">${t(st.key)}</span><div class="small muted">${fmtT(r.start)} – ${fmtT(r.end)}</div></div><button class="btn small" data-act="go" data-arg="booking">${t('open')}</button></div></div>`;}
+  h+=`<button class="choice" data-act="go" data-arg="auto"><span class="cico">${ic('building')}</span><span><b>${t('optAuto')}</b><span>${t('optAutoSub')}</span></span></button>`;
+  h+=`<button class="choice" data-act="go" data-arg="map"><span class="cico">${ic('map')}</span><span><b>${t('optMap')}</b><span>${t('optMapSub')}</span></span></button>`;
+  h+=`<div class="card"><h3>${t('byLot')}</h3>`;
+  LOTS.forEach(L=>{const s=lotStats(L.id);const pct=s.t?Math.round(s.f/s.t*100):0;
+    h+=`<button class="lotrow" data-act="lotmap" data-arg="${L.id}"><b style="width:74px">${t('lot',{l:L.id})}</b><span class="grow small muted">${t('near',{b:esc(bld(L.near).s[lang])})}</span><span class="small" style="font-weight:700">${t('freeOf',{f:s.f,t:s.t})}</span><span class="bar"><i style="width:${pct}%"></i></span></button>`;});
+  return h+`</div>`;
+}
+function stAuto(u){
+  const st=ui.student;let h=`<h3 style="margin:0 0 10px">${t('chooseBld')}</h3><div class="bgrid">`;
+  BLD.forEach(b=>{h+=`<button class="bbtn${st.autoB===b.id?' on':''}" data-act="pickB" data-arg="${b.id}">${ic('building')}<span>${esc(b.n[lang])}</span></button>`;});
+  h+=`</div>`;
+  if(u.eligible)h+=`<label class="check"><input type="checkbox" data-change="inclAcc" ${st.inclAcc?'checked':''}> ${t('inclAcc')}</label>`;
+  if(st.autoB){
+    const best=nearest(st.autoB,u,st.inclAcc);
+    if(best){const m=Math.round(best.d*2.5/10)*10,w=Math.max(1,Math.round(m/80));
+      h+=`<div class="card" style="border-color:var(--green)"><div class="small muted">${t('nearestFor',{b:esc(bld(st.autoB).n[lang])})}</div>
+      <div class="row" style="margin:4px 0"><span class="big">${best.sp.id}</span>${best.sp.acc?`<span class="pill b">♿ ${t('accessible')}</span>`:''}<span class="pill g">${t('stFree')}</span></div>
+      <div class="small muted" style="margin-bottom:12px">${t('lot',{l:best.sp.lot})} · ${t('walk',{m,w})}</div>
+      <div class="stack"><button class="btn" data-act="reserveNow" data-arg="${best.sp.id}">${ic('check')}${t('reserveNow')}</button>
+      <div class="row"><button class="btn sec grow" data-act="spot" data-arg="${best.sp.id}">${ic('clock')}${t('chooseTime')}</button>${dirBtn('sec grow')}</div></div></div>`;
+      h+=`<div class="card" style="padding:8px">${mapSVG({hiBld:st.autoB,pulse:best.sp.id,sel:best.sp.id,bldAct:'pickB'})}</div>`;
+    } else h+=`<div class="notice warn">${t('noSpot')}</div><div class="card" style="padding:8px;margin-top:10px">${mapSVG({hiBld:st.autoB,bldAct:'pickB'})}</div>`;
+  }
+  return h;
+}
+function stMap(){
+  const st=ui.student;let h=`<div class="chips"><button class="${st.lot==='all'?'on':''}" data-act="lot" data-arg="all">${t('allLots')}</button>`;
+  LOTS.forEach(L=>{h+=`<button class="${st.lot===L.id?'on':''}" data-act="lot" data-arg="${L.id}">${t('lot',{l:L.id})}</button>`;});
+  h+=`</div><div class="card" style="padding:8px">${mapSVG({lot:st.lot,zoom:true,bldAct:'mapBld',sel:st.sheet&&st.sheet.spot})}${legend()}</div><p class="small muted" style="margin:0">${t('tapHint')}</p>`;
+  return h;
+}
+function resState(r,n){
+  n=n||now();
+  if(r.status==='booked')return {key:'rs_booked',pill:'y'};
+  if(r.status==='active'){if(n<r.end)return {key:'rs_active',pill:'g'};if(n<r.end+GRACE)return {key:'rs_ended',pill:'o'};return {key:'rs_overstay',pill:'r'};}
+  return {key:'rs_'+r.status,pill:r.status==='done'?'g':r.status==='noshow'?'r':'gr'};
+}
+function stBooking(u){
+  const r=openRes(u.id),n=now();
+  if(!r)return `<div class="empty">${ic('ticket')}<p>${t('noBooking')}</p><button class="btn" data-act="go" data-arg="auto">${t('findSpot')}</button></div>`;
+  const st=resState(r,n),sp=spotById(r.spot);
+  let cd='';
+  if(r.status==='booked'){
+    if(n<r.start-EARLY)cd=`<div class="small muted">${t('ciOpensAt',{t:fmtT(r.start-EARLY)})}</div>`;
+    else cd=`<div class="small muted">${t('ciClosesIn')}</div><span class="cdown" data-cd="${r.start+GRACE}">${fmtClock(r.start+GRACE-n)}</span>`;
+  } else if(n<r.end) cd=`<div class="small muted">${t('timeLeft')}</div><span class="cdown" data-cd="${r.end}">${fmtClock(r.end-n)}</span>`;
+  else if(n<r.end+GRACE) cd=`<div class="small muted">${t('coClosesIn')}</div><span class="cdown" style="color:var(--orange)" data-cd="${r.end+GRACE}">${fmtClock(r.end+GRACE-n)}</span>`;
+  else cd=`<div class="small muted">${t('overBy')}</div><span class="cdown" style="color:var(--red)" data-up="${r.end+GRACE}">${fmtClock(n-r.end-GRACE)}</span>`;
+  let h=`<div class="card"><div class="small muted">${t('yourBooking')}</div><div class="row" style="margin:2px 0 4px"><span class="big">${r.spot}</span>${sp&&sp.acc?`<span class="pill b">♿</span>`:''}</div>
+  <div class="small muted">${t('lot',{l:r.spot.split('-')[0]})} · ${t('near',{b:esc(bld(LOTS.find(l=>l.id===r.spot.split('-')[0]).near).n[lang])})}</div>
+  <div class="statusline"><span class="pill ${st.pill}">${t(st.key)}</span></div>
+  <div style="text-align:center;margin:8px 0 14px">${cd}</div>
+  <dl class="kv"><dt>${t('start')}</dt><dd>${fmtDT(r.start)}</dd><dt>${t('end')}</dt><dd>${fmtDT(r.end)}</dd><dt>${t('ext')}</dt><dd>${t('extUsed',{u:r.ext,m:MAX_EXT})}</dd></dl></div><div class="stack">`;
+  if(r.status==='booked'){
+    h+=`<button class="btn" data-act="checkin" data-arg="${r.id}" ${n<r.start-EARLY?'disabled':''}>${ic('check')}${t('checkIn')}</button>`;
+    h+=`<button class="btn sec" data-act="extend" data-arg="${r.id}" ${r.ext>=MAX_EXT?'disabled':''}>${ic('clock')}${t('extend')}</button>`;
+    h+=`<button class="btn ghost" data-act="cancelAsk" data-arg="${r.id}">${ic('x')}${t('cancelRes')}</button>`;
+  } else {
+    h+=`<button class="btn sec" data-act="extend" data-arg="${r.id}" ${(r.ext>=MAX_EXT||n>=r.end)?'disabled':''}>${ic('clock')}${t('extend')}</button>`;
+    h+=`<button class="btn" data-act="checkout" data-arg="${r.id}">${ic('logout','flip')}${t('checkOut')}</button>`;
+  }
+  h+=dirBtn('ghost')+`</div><p class="small muted">${t('rulesNote')}</p>`;
+  return h;
+}
+function stHistory(u){
+  const list=S.res.filter(r=>r.uid===u.id&&!isOpen(r)).sort((a,b)=>b.start-a.start);
+  if(!list.length)return `<div class="empty">${t('noHistory')}</div>`;
+  return `<h3 style="margin:0 0 10px">${t('history')}</h3>`+list.map(r=>{const st=resState(r);return `<div class="card row"><div class="grow"><b>${t('spot',{s:r.spot})}</b><div class="small muted">${fmtD(r.start)} · ${fmtT(r.start)} – ${fmtT(r.checkOut||r.end)}</div></div><span class="pill ${st.pill}">${t(st.key)}</span></div>`;}).join('');
+}
+function stAlerts(u){
+  const list=S.notif.filter(x=>x.uid===u.id).sort((a,b)=>b.t-a.t);
+  if(!list.length)return `<div class="empty">${t('noAlerts')}</div>`;
+  return `<h3 style="margin:0 0 10px">${t('alerts')}</h3>`+list.map(x=>{
+    const r=x.p.rid&&S.res.find(y=>y.id===x.p.rid);
+    const act=x.key==='n_remind'&&r&&r.status==='active'&&now()<r.end&&r.ext<MAX_EXT?`<button class="btn small" style="margin-top:8px" data-act="extend" data-arg="${r.id}">${t('extend')}</button>`:'';
+    const tone=x.key==='n_viol'||x.key==='n_noshow'||x.key==='n_extNo'?'bad':x.key==='n_ended'||x.key==='n_remind'?'warn':'';
+    return `<div class="card"><div class="notice ${tone}" style="background:none;padding:0;color:inherit">${esc(notifText(x))}</div><div class="small muted" style="margin-top:4px">${fmtDT(x.t)}</div>${act}</div>`;}).join('');
+}
+function stSheet(u){
+  const sh=ui.student.sheet;if(!sh)return '';
+  let b='';
+  if(sh.type==='spot'){
+    const sp=spotById(sh.spot);if(!sp)return '';
+    const n=now(),st=spotState(sp,n),c=color(st);
+    b=`<h3>${t('spot',{s:sp.id})}</h3><div class="small muted">${t('lot',{l:sp.lot})} · ${t('near',{b:esc(bld(LOTS.find(l=>l.id===sp.lot).near).n[lang])})}</div>
+    <div class="statusline"><span class="pill ${pillCls[c]}">${statusText(st)}</span>${sp.acc?`<span class="pill b">♿ ${t('accessible')}</span>`:''}</div>`;
+    if(st.k==='free'&&st.next)b+=`<div class="small muted" style="margin-bottom:10px">${t('nextRes',{t:fmtT(st.next.start)})}</div>`;
+    if(st.k!=='maint'&&st.k!=='manual'){
+      let first=n;if(st.k==='taken')first=Math.max(n,st.r.end+GRACE);
+      const opts=[];if(first===n)opts.push(`<option value="now">${t('now')} (${fmtT(n)})</option>`);
+      let s=Math.ceil((first+1)/(15*MIN))*15*MIN;for(let i=0;i<28;i++,s+=15*MIN)opts.push(`<option value="${s}">${fmtD(s)} · ${fmtT(s)}</option>`);
+      b+=`<div class="field"><label for="startSel">${t('startAt')}</label><select id="startSel">${opts.join('')}</select></div><p class="small muted" style="margin-top:-4px">${t('resLen')}</p>
+      <div class="stack"><button class="btn" data-act="reserve" data-arg="${sp.id}">${ic('check')}${t('confirmRes')}</button>${dirBtn('sec')}<button class="btn ghost" data-act="closeSheet">${t('close')}</button></div>`;
+    } else b+=`<div class="stack">${dirBtn('sec')}<button class="btn ghost" data-act="closeSheet">${t('close')}</button></div>`;
+  } else if(sh.type==='result'){
+    if(sh.ok){const r=S.res.find(x=>x.id===sh.rid);
+      b=`<div class="notice ok" style="margin-bottom:12px"><b>${t('resOk')}</b></div><h3>${t('spot',{s:r.spot})}</h3><dl class="kv" style="margin:10px 0 16px"><dt>${t('start')}</dt><dd>${fmtDT(r.start)}</dd><dt>${t('end')}</dt><dd>${fmtDT(r.end)}</dd></dl>
+      <p class="small muted">${t('rulesNote')}</p><div class="stack"><button class="btn" data-act="go" data-arg="booking">${t('viewBooking')}</button>${dirBtn('sec')}<button class="btn ghost" data-act="closeSheet">${t('close')}</button></div>`;
+    } else b=`<div class="notice bad" style="margin-bottom:12px"><b>${t('resFail')}</b><br>${t(sh.why)}</div><div class="stack">${sh.why==='why_oneOnly'?`<button class="btn" data-act="go" data-arg="booking">${t('viewBooking')}</button>`:''}<button class="btn ghost" data-act="closeSheet">${t('close')}</button></div>`;
+  } else if(sh.type==='cancel'){
+    b=`<h3>${t('cancelRes')}</h3><p>${t('cancelQ')}</p><div class="stack"><button class="btn danger" data-act="cancel" data-arg="${sh.rid}">${t('yesCancel')}</button><button class="btn ghost" data-act="closeSheet">${t('keep')}</button></div>`;
+  }
+  return `<div class="backdrop" data-act="closeSheet" data-self="1"><div class="sheet" data-scroll="sheet" role="dialog" aria-modal="true"><div class="grab"></div>${b}</div></div>`;
+}
+function studentApp(){
+  const s=S.sessions.student;if(!s)return loginScreen('student');
+  const u=user(s.uid),st=ui.student;
+  const unread=S.notif.filter(x=>x.uid===u.id&&!x.read).length;
+  const titles={home:t('appShort'),auto:t('optAuto'),map:t('optMap'),booking:t('yourBooking'),history:t('history'),alerts:t('alerts')};
+  const body={home:stHome,auto:stAuto,map:stMap,booking:stBooking,history:stHistory,alerts:stAlerts}[st.screen](u);
+  const back=st.screen==='auto'?`<button class="iconbtn" data-act="go" data-arg="home" aria-label="${t('back')}">${ic('back','flip')}</button>`:'';
+  const tabs=[['home','home','tabHome'],['map','map','tabMap'],['booking','ticket','tabBooking'],['history','history','tabHistory'],['alerts','bell','tabAlerts']];
+  return `<div class="appbar">${back}<h1>${titles[st.screen]}</h1><button class="iconbtn" data-act="logout" data-arg="student" aria-label="${t('signOut')}" title="${t('signedUntil',{d:fmtDT(s.exp)})}">${ic('logout','flip')}</button></div>
+  <div class="content" data-scroll="st-${st.screen}">${st.screen==='home'?`<div class="small muted" style="margin-bottom:8px">${t('signedUntil',{d:fmtDT(s.exp)})}</div>`:''}${body}</div>
+  <nav class="tabbar">${tabs.map(([k,i,l])=>`<button class="${st.screen===k||(k==='home'&&st.screen==='auto')?'on':''}" data-act="go" data-arg="${k}">${ic(i)}${t(l)}${k==='alerts'&&unread?`<span class="dot">${unread}</span>`:''}</button>`).join('')}</nav>
+  ${stSheet(u)}${st.toast?`<div class="toast${st.toast.bad?' bad':''}" role="status">${esc(st.toast.text)}</div>`:''}`;
+}
+
+/* ================= officer app ================= */
+function ofMap(){const lt=ui.officer.lot||'all';return `<div class="chips"><button class="${lt==='all'?'on':''}" data-act="oLot" data-arg="all">${t('allLots')}</button>${LOTS.map(L=>`<button class="${lt===L.id?'on':''}" data-act="oLot" data-arg="${L.id}">${t('lot',{l:L.id})}</button>`).join('')}</div><div class="card" style="padding:8px">${mapSVG({spotAct:'oSpot',lot:lt,zoom:true,sel:ui.officer.sheet&&ui.officer.sheet.spot})}${legend()}</div><p class="small muted" style="margin:0">${t('oMapHint')}</p>`;}
+function resInfo(r){
+  const o=user(r.uid),n=now(),st=resState(r,n);
+  return `<dl class="kv"><dt>${t('owner')}</dt><dd>${nm(o)} <span class="muted ltr">(${esc(r.uid)})</span></dd><dt>${t('plate')}</dt><dd class="ltr">${esc(o?o.plate:'—')}</dd>
+  <dt>${t('start')} – ${t('end')}</dt><dd>${fmtT(r.start)} – ${fmtT(r.end)}</dd><dt>${t('resStatus')}</dt><dd><span class="pill ${st.pill}">${t(st.key)}</span> ${r.checkIn?`<span class="small muted">${t('checkedInAt',{t:fmtT(r.checkIn)})}</span>`:`<span class="small muted">${t('notCheckedIn')}</span>`}</dd></dl>`;
+}
+function ofSheet(){
+  const sh=ui.officer.sheet;if(!sh)return '';
+  const sp=spotById(sh.spot);if(!sp)return '';
+  const st=spotState(sp),c=color(st);
+  let b=`<h3>${t('spot',{s:sp.id})}</h3><div class="statusline"><span class="pill ${pillCls[c]}">${statusText(st)}</span>${sp.acc?`<span class="pill b">♿ ${t('accessible')}</span>`:''}</div>`;
+  if(st.k==='taken')b+=`<div class="card">${resInfo(st.r)}</div>`;
+  b+=`<div class="stack"><button class="btn" data-act="oVerifyFrom" data-arg="${sp.id}">${ic('shield')}${t('verifySpot')}</button>
+  <div class="row"><button class="btn sec grow" data-act="oIn" data-arg="${sp.id}">${t('manualIn')}</button><button class="btn sec grow" data-act="oOut" data-arg="${sp.id}">${t('manualOut')}</button></div>
+  <div class="small muted" style="margin-top:4px">${t('updStatus')}</div>
+  <div class="row"><button class="btn ghost grow" data-act="oSet" data-arg="${sp.id}|occ">${t('markOcc')}</button><button class="btn ghost grow" data-act="oSet" data-arg="${sp.id}|free">${t('markFree')}</button></div>
+  <button class="btn ghost" data-act="closeSheet">${t('close')}</button></div>`;
+  return `<div class="backdrop" data-act="closeSheet" data-self="1"><div class="sheet" data-scroll="sheet" role="dialog" aria-modal="true"><div class="grab"></div>${b}</div></div>`;
+}
+function ofVerify(){
+  const v=ui.officer.v;
+  if(v.step==='form'){
+    let opts=`<option value="">${t('selectSpot')}</option>`;
+    LOTS.forEach(L=>{opts+=`<optgroup label="${esc(t('lot',{l:L.id}))}">`+S.spots.filter(s=>s.lot===L.id).map(s=>`<option value="${s.id}" ${v.spot===s.id?'selected':''}>${s.id}${s.acc?' ♿':''}</option>`).join('')+`</optgroup>`;});
+    return `<h3 style="margin:0 0 12px">${t('vTitle')}</h3><form data-form="verify" autocomplete="off"><div class="field"><label for="vSpot">${t('vSpot')}</label><select id="vSpot" name="spot" required>${opts}</select></div>
+    <div class="field"><label for="vPlate">${t('vPlate')}</label><input id="vPlate" name="plate" value="${esc(v.plate)}" placeholder="ABC 1234" style="direction:ltr"></div>
+    <button class="btn full" type="submit">${ic('search')}${t('vCheck')}</button></form>`;
+  }
+  const R=v.res,sp=spotById(R.spot);
+  const po=R.plateOwner?user(R.plateOwner):null;
+  let h=`<div class="card"><h3>${t('vResult')} · ${t('spot',{s:R.spot})}</h3><div class="statusline"><span class="pill ${pillCls[color(R.st)]}">${statusText(R.st)}</span>${R.acc?`<span class="pill b">♿ ${t('accYes')}</span>`:''}</div>`;
+  if(R.st.k==='taken')h+=resInfo(R.st.r);else h+=`<p class="small muted">${t('noRes')}</p>`;
+  if(R.plate)h+=`<div style="margin-top:10px" class="small"><b class="ltr">${esc(R.plate)}</b> — ${po?`${t('plateOwner')} ${nm(po)} (${po.eligible?t('eligibleYes'):t('eligibleNo')})`:t('plateUnknown')}</div>`;
+  const sugTone={overstay:'bad',reserved:'bad',acc:'bad',valid:'ok',grace:'warn',free:'',noRes:'warn',maint:''}[R.sug];
+  h+=`<div class="notice ${sugTone}" style="margin-top:12px">${t('sug_'+R.sug,{d:fmtDur(R.d)})}</div></div>`;
+  if(v.step==='result'){
+    h+=`<div class="stack"><button class="btn danger" data-act="oConfirm">${ic('alert')}${t('violYes')}</button><button class="btn sec" data-act="oNoViol">${ic('check')}${t('noViol')}</button><button class="btn ghost" data-act="oReset">${t('back')}</button></div>`;
+  } else if(v.step==='type'){
+    const sug={overstay:'v_overstay',reserved:'v_reserved',acc:'v_acc'}[R.sug];
+    const sel=v.type||sug||'v_overstay';
+    h+=`<form data-form="issue" class="card" autocomplete="off"><h3>${t('vType')}</h3>`+['v_overstay','v_reserved','v_acc'].map(k=>`<label class="check"><input type="radio" name="vt" value="${k}" ${sel===k?'checked':''}> ${t(k)} ${sug===k?`<span class="pill y">${t('suggested')}</span>`:''}</label>`).join('')+
+    `<div class="field"><label for="iPlate">${t('plate')}</label><input id="iPlate" name="plate" value="${esc(R.plate||(R.st.k==='taken'&&R.sug==='overstay'?(user(R.st.r.uid)||{}).plate||'':''))}" style="direction:ltr" placeholder="ABC 1234"></div>
+    <div class="field"><label for="iNote">${t('note')}</label><input id="iNote" name="note"></div>
+    <label class="check"><input type="checkbox" name="release"> ${t('release')}</label>
+    <div class="stack"><button class="btn danger" type="submit">${t('issue')}</button><button class="btn ghost" type="button" data-act="oBackRes">${t('back')}</button></div></form>`;
+  } else if(v.step==='done'){
+    const d=v.done;
+    if(d.none)h+=`<div class="notice" style="margin-bottom:12px"><b>${t('noneIssued')}</b></div>`;
+    else h+=`<div class="notice ok" style="margin-bottom:12px"><b>${t('issued')}: ${t(d.type)}</b><br>${d.uid?t('notified',{n:nm(user(d.uid))}):t('recordedPlate',{p:esc(d.plate)})}</div>`;
+    h+=`<button class="btn full" data-act="oReset">${t('newCheck')}</button>`;
+  }
+  return h;
+}
+function violRows(list){return list.slice().sort((a,b)=>b.t-a.t);}
+function ofLog(){
+  const list=violRows(S.viol);
+  if(!list.length)return `<div class="empty">${t('noViolations')}</div>`;
+  return list.map(v=>`<div class="card"><div class="row"><b class="grow">${t(v.type)}</b><span class="pill">${v.spot}</span></div><div class="small muted">${fmtDT(v.t)} · <span class="ltr">${esc(v.plate||'—')}</span> · ${v.uid?nm(user(v.uid)):t('plateUnknown')}</div>${v.note?`<div class="small" style="margin-top:4px">${esc(v.note)}</div>`:''}</div>`).join('');
+}
+function officerApp(){
+  const s=S.sessions.officer;if(!s)return loginScreen('officer');
+  const st=ui.officer;
+  const titles={map:t('oTabMap'),verify:t('verifySpot'),log:t('oTabLog')};
+  const body={map:ofMap,verify:ofVerify,log:ofLog}[st.screen]();
+  const tabs=[['map','map','oTabMap'],['verify','shield','oTabVerify'],['log','list','oTabLog']];
+  return `<div class="appbar"><span class="iconbtn" style="background:var(--priSoft);color:var(--pri)">${ic('shield')}</span><h1>${titles[st.screen]}</h1><button class="iconbtn" data-act="logout" data-arg="officer" aria-label="${t('signOut')}" title="${t('signedUntil',{d:fmtDT(s.exp)})}">${ic('logout','flip')}</button></div>
+  <div class="content" data-scroll="of-${st.screen}">${body}</div>
+  <nav class="tabbar">${tabs.map(([k,i,l])=>`<button class="${st.screen===k?'on':''}" data-act="oGo" data-arg="${k}">${ic(i)}${t(l)}</button>`).join('')}</nav>
+  ${ofSheet()}${st.toast?`<div class="toast${st.toast.bad?' bad':''}" role="status">${esc(st.toast.text)}</div>`:''}`;
+}
+
+/* ================= admin app ================= */
+function adDash(){
+  const n=now();let free=0,taken=0,oos=0;
+  S.spots.forEach(sp=>{const k=spotState(sp,n).k;if(k==='free')free++;else if(k==='maint')oos++;else taken++;});
+  const dayStart=new Date(n);dayStart.setHours(0,0,0,0);
+  const vt=S.viol.filter(v=>v.t>=dayStart.getTime()).length;
+  let h=`<h2>${t('aDash')}</h2><p class="sub">${t('aDashSub')}</p><div class="kpis">
+  <div class="kpi"><b>${S.spots.length}</b><span>${t('kTotal')}</span></div><div class="kpi"><b style="color:var(--green)">${free}</b><span>${t('kFree')}</span></div>
+  <div class="kpi"><b style="color:var(--red)">${taken}</b><span>${t('kTaken')}</span></div><div class="kpi"><b>${oos}</b><span>${t('kOos')}</span></div>
+  <div class="kpi"><b style="color:var(--acc)">${S.spots.filter(s=>s.acc).length}</b><span>${t('kAcc')}</span></div><div class="kpi"><b>${vt}</b><span>${t('kViol')}</span></div></div>
+  <div class="dgrid"><div class="tblbox"><table class="tbl"><thead><tr><th>${t('colLot')}</th><th>${t('colNear')}</th><th>${t('colTotal')}</th><th>${t('colFree')}</th><th>${t('colTaken')}</th><th>${t('colAcc')}</th><th>${t('colOcc')}</th></tr></thead><tbody>`;
+  LOTS.forEach(L=>{const s=lotStats(L.id);const occ=s.t?Math.round(s.taken/(s.t-s.o||1)*100):0;
+    h+=`<tr><td><b>${t('lot',{l:L.id})}</b></td><td>${esc(bld(L.near).n[lang])}</td><td>${s.t}</td><td style="color:var(--green);font-weight:700">${s.f}</td><td>${s.taken}</td><td>${s.acc}</td><td><div class="row"><span class="bar" style="width:90px"><i style="width:${occ}%;background:var(--pri)"></i></span><span class="small">${occ}%</span></div></td></tr>`;});
+  h+=`</tbody></table></div><div class="card" style="padding:10px"><h3>${t('liveMap')}</h3>${mapSVG({spotAct:'aSpotJump'})}${legend()}</div></div>`;
+  return h;
+}
+function adSpots(){
+  const a=ui.admin,n=now();
+  let lotOpts=LOTS.map(L=>`<option value="${L.id}">${t('lot',{l:L.id})}</option>`).join('');
+  let h=`<h2>${t('aSpots')}</h2><p class="sub">${t('aSpotsSub')}</p>
+  <form class="toolbar" data-form="addSpot"><div class="field"><label for="nsLot">${t('filterLot')}</label><select id="nsLot" name="lot">${lotOpts}</select></div>
+  <label class="check"><input type="checkbox" name="acc"> ${t('accessible')}</label><button class="btn" type="submit">${ic('plus')}${t('addSpot')}</button>
+  <span class="grow"></span><div class="field"><label for="fLot">${t('filterLot')}</label><select id="fLot" data-change="aLot"><option value="all">${t('allLots')}</option>${LOTS.map(L=>`<option value="${L.id}" ${a.lot===L.id?'selected':''}>${t('lot',{l:L.id})}</option>`).join('')}</select></div></form>
+  <div class="tblbox"><table class="tbl"><thead><tr><th>${t('colSpot')}</th><th>${t('colLot')}</th><th>${t('colAcc')}</th><th>${t('colStatus')}</th><th>${t('colService')}</th><th>${t('colActions')}</th></tr></thead><tbody>`;
+  S.spots.filter(s=>a.lot==='all'||s.lot===a.lot).forEach(sp=>{const st=spotState(sp,n),c=color(st);
+    h+=`<tr id="row-${sp.id}"${a.flash===sp.id?' style="background:var(--priSoft)"':''}><td><b>${sp.id}</b></td><td>${t('lot',{l:sp.lot})}</td>
+    <td>${sp.acc?`<span class="pill b">♿ ${t('accYes')}</span>`:'—'}</td><td><span class="pill ${pillCls[c]}">${statusText(st)}</span></td>
+    <td>${sp.maint?`<span class="pill gr">${t('oos')}</span>`:`<span class="pill g">${t('inService')}</span>`}</td>
+    <td><div class="row wrap"><button class="btn small sec" data-act="aAcc" data-arg="${sp.id}">${sp.acc?t('unclassify'):t('classify')}</button><button class="btn small ghost" data-act="aMaint" data-arg="${sp.id}">${sp.maint?t('setIn'):t('setOos')}</button><button class="btn small ghost" data-act="aDelSpot" data-arg="${sp.id}" aria-label="${t('del')} ${sp.id}">${ic('x')}${t('del')}</button></div></td></tr>`;});
+  return h+`</tbody></table></div>`;
+}
+function adUsers(){
+  const a=ui.admin,q=a.q.trim().toLowerCase();
+  const list=S.users.filter(u=>!q||u.id.toLowerCase().includes(q)||u.name.en.toLowerCase().includes(q)||u.name.ar.includes(q));
+  const roleL={student:t('roleStudent'),officer:t('roleOfficer'),admin:t('roleAdmin')};
+  let h=`<h2>${t('aUsers')}</h2><p class="sub">${t('aUsersSub')}</p>
+  <div class="toolbar"><div class="field" style="min-width:260px"><label for="uq">${t('search')}</label><input id="uq" data-input="aQ" value="${esc(a.q)}"></div><button class="btn" data-act="aUserNew">${ic('plus')}${t('addUser')}</button><span class="grow"></span><span class="small muted">${t('showing',{n:list.length})}</span></div>
+  <div class="tblbox"><table class="tbl"><thead><tr><th>${t('colId')}</th><th>${t('colName')}</th><th>${t('colRole')}</th><th>${t('colPlate')}</th><th>${t('colElig')}</th><th>${t('colAcct')}</th><th>${t('colActions')}</th></tr></thead><tbody>`;
+  list.forEach(u=>{h+=`<tr><td class="ltr">${esc(u.id)}</td><td><b>${nm(u)}</b></td><td>${roleL[u.role]}</td><td class="ltr">${esc(u.plate||'—')}</td>
+    <td>${u.role==='student'?`<div class="row">${u.eligible?`<span class="pill b">${t('eligible')}</span>`:`<span class="pill gr">${t('notEligible')}</span>`}<button class="btn small ghost" data-act="aElig" data-arg="${esc(u.id)}">${u.eligible?t('removeElig'):t('makeElig')}</button></div>`:'—'}</td>
+    <td>${u.suspended?`<span class="pill r">${t('suspendedL')}</span>`:`<span class="pill g">${t('activeL')}</span>`}</td>
+    <td><div class="row"><button class="btn small sec" data-act="aUserEdit" data-arg="${esc(u.id)}">${t('edit')}</button><button class="btn small ghost" data-act="aSusp" data-arg="${esc(u.id)}">${u.suspended?t('activate'):t('suspend')}</button><button class="btn small ghost" data-act="aDelUser" data-arg="${esc(u.id)}">${t('del')}</button></div></td></tr>`;});
+  return h+`</tbody></table></div><p class="small muted" style="margin-top:12px">${t('perms')}</p>`;
+}
+function adViol(){
+  const list=violRows(S.viol);
+  let h=`<h2>${t('aViol')}</h2><p class="sub">${t('aViolSub')}</p>`;
+  if(!list.length)return h+`<div class="empty">${t('noViolations')}</div>`;
+  h+=`<div class="tblbox"><table class="tbl"><thead><tr><th>${t('colTime')}</th><th>${t('colType')}</th><th>${t('colSpot')}</th><th>${t('colPlate')}</th><th>${t('student')}</th><th>${t('colOfficer')}</th><th>${t('colNote')}</th></tr></thead><tbody>`;
+  list.forEach(v=>{h+=`<tr><td>${fmtDT(v.t)}</td><td><b>${t(v.type)}</b></td><td>${v.spot}</td><td class="ltr">${esc(v.plate||'—')}</td><td>${v.uid?nm(user(v.uid)):t('plateUnknown')}</td><td>${nm(user(v.by))}</td><td>${esc(v.note||'')}</td></tr>`;});
+  return h+`</tbody></table></div>`;
+}
+function adModal(){
+  const m=ui.admin.modal;if(!m)return '';
+  let b='';
+  if(m.type==='user'){const u=m.id?user(m.id):null;
+    b=`<h3>${u?t('editUser'):t('addUser')}</h3><form data-form="user" autocomplete="off">${m.err?`<div class="notice bad" style="margin-bottom:12px">${t(m.err)}</div>`:''}
+    <div class="field"><label for="fId">${t('colId')}</label><input id="fId" name="fid" value="${esc(u?u.id:'')}" ${u?'readonly':''} style="direction:ltr"></div>
+    <div class="field"><label for="fName">${t('colName')}</label><input id="fName" name="fname" value="${esc(u?u.name[lang]:'')}"></div>
+    <div class="field"><label for="fPw">${t('password')}</label><input id="fPw" name="pw" type="password" value="${esc(u?u.pw:'')}"></div>
+    <div class="field"><label for="fRole">${t('colRole')}</label><select id="fRole" name="role">${['student','officer','admin'].map(r=>`<option value="${r}" ${u&&u.role===r?'selected':''}>${t('role'+r[0].toUpperCase()+r.slice(1))}</option>`).join('')}</select></div>
+    <div class="field"><label for="fPlate">${t('colPlate')}</label><input id="fPlate" name="plate" value="${esc(u?u.plate:'')}" style="direction:ltr" placeholder="ABC 1234"></div>
+    <label class="check"><input type="checkbox" name="elig" ${u&&u.eligible?'checked':''}> ${t('makeElig')}</label>
+    <div class="row"><button class="btn" type="submit">${t('save')}</button><button class="btn ghost" type="button" data-act="aClose">${t('cancel')}</button></div></form>`;
+  } else if(m.type==='delSpot'){
+    b=`<h3>${t('delSpotQ',{s:m.id})}</h3>${m.err?`<div class="notice bad" style="margin-bottom:12px">${t(m.err)}</div>`:''}<div class="field"><label for="dReason">${t('reason')}</label><select id="dReason"><option>${t('rDisc')}</option><option>${t('rMaint')}</option></select></div>
+    <div class="row"><button class="btn danger" data-act="aDelSpotOk" data-arg="${m.id}">${t('del')}</button><button class="btn ghost" data-act="aClose">${t('cancel')}</button></div>`;
+  } else if(m.type==='delUser'){
+    b=`<h3>${t('delUserQ',{n:nm(user(m.id))})}</h3>${m.err?`<div class="notice bad" style="margin-bottom:12px">${t(m.err)}</div>`:''}<div class="row"><button class="btn danger" data-act="aDelUserOk" data-arg="${esc(m.id)}">${t('del')}</button><button class="btn ghost" data-act="aClose">${t('cancel')}</button></div>`;
+  }
+  return `<div class="modalbg" data-act="aClose" data-self="1"><div class="modal" role="dialog" aria-modal="true">${b}</div></div>`;
+}
+function adminApp(){
+  const s=S.sessions.admin;
+  let inner;
+  if(!s)inner=`<div style="display:grid;place-items:center;min-height:720px;background:var(--bg)"><div class="card" style="width:400px;max-width:92%;padding:0">${loginScreen('admin')}</div></div>`;
+  else{
+    const a=ui.admin,u=user(s.uid);
+    const nav=[['dash','grid','aDash'],['spots','car','aSpots'],['users','users','aUsers'],['viol','alert','aViol']];
+    const body={dash:adDash,spots:adSpots,users:adUsers,viol:adViol}[a.screen]();
+    inner=`<div class="dapp"><aside class="side"><div class="who">${t('roleAdmin')}<b>${nm(u)}</b></div>${nav.map(([k,i,l])=>`<button class="${a.screen===k?'on':''}" data-act="aGo" data-arg="${k}">${ic(i)}${t(l)}</button>`).join('')}<span class="sp"></span><button data-act="logout" data-arg="admin">${ic('logout','flip')}${t('signOut')}</button></aside><section class="dmain" data-scroll="ad-${a.screen}">${body}</section></div>${adModal()}${a.toast?`<div class="toast dtoast${a.toast.bad?' bad':''}" role="status">${esc(a.toast.text)}</div>`:''}`;
+  }
+  return `<div class="desk"><div class="deskbar"><i></i><i></i><i></i><span class="url">parking-tracker.local/admin</span></div>${inner}</div>`;
+}
+
+/* ================= presenter panel ================= */
+function currentUCs(){
+  const r=ui.role;
+  if(r==='student'){if(!S.sessions.student)return ['login'];const st=ui.student;if(st.sheet&&st.sheet.type==='spot'){const sp=spotById(st.sheet.spot);return sp&&sp.acc?['us10','us2','us8']:['us2','us8'];}if(st.sheet&&st.sheet.type==='cancel')return ['us4'];if(st.sheet&&st.sheet.type==='result')return ['us2','msg'];
+    return {home:['us1'],auto:['us6','us2','us8'],map:['us1','us2','us10'],booking:['us13','us3','us4','us5','us8'],history:['us9'],alerts:['msg','us3']}[st.screen];}
+  if(r==='officer'){if(!S.sessions.officer)return ['login'];const st=ui.officer;if(st.sheet)return ['us12','us13','us5','us7'];return {map:['us7','us13','us5'],verify:['us12','us11','us14','us15','us16'],log:['us11']}[st.screen];}
+  if(!S.sessions.admin)return ['login'];return {dash:['us1'],spots:['us17','us10'],users:['us18','us10'],viol:['us11']}[ui.admin.screen];
+}
+function panel(){
+  const n=now();
+  const acc=[['student','443012345','Abdulaziz Alghamdi','عبدالعزيز الغامدي',''],['student','443054321','Faisal Alzahrani','فيصل الزهراني',t('eligTag')],['officer','SO-1001','Saeed Alamri','سعيد العمري',''],['admin','AD-01','Parking Admin','مسؤول المواقف','']];
+  return `<aside class="panel">
+  <div class="card"><h4>${t('pClock')}</h4><div class="clock" data-clock>${fmtT(n)}</div><div class="clockday" data-clockday>${new Date(n).toLocaleDateString(LOC(),{weekday:'long',day:'numeric',month:'long'})}</div>
+  <div class="tbtns"><button class="btn small sec" data-act="time" data-arg="5">${t('p5')}</button><button class="btn small sec" data-act="time" data-arg="15">${t('p15')}</button><button class="btn small sec" data-act="time" data-arg="60">${t('p60')}</button><button class="btn small sec" data-act="nextWeek">${t('pWeek')}</button></div>
+  <p class="small muted" style="margin:8px 0 8px">${t('pClockNote')}</p><button class="btn small ghost full" data-act="reset">${ic('refresh')}${t('pReset')}</button></div>
+  <div class="card"><h4>${t('pShows')}</h4><div class="uclist">${(currentUCs()||[]).map(k=>`<div class="uc">${t(k)}</div>`).join('')}</div></div>
+  <div class="card"><h4>${t('pAccounts')}</h4>${acc.map(([r,id,en,ar,tag])=>`<div class="acct"><div class="grow"><b>${lang==='ar'?ar:en}</b><div class="small muted">${t('role'+r[0].toUpperCase()+r.slice(1))}${tag?' · '+tag:''}</div></div><code>${id}</code><button class="btn small sec" data-act="quick" data-arg="${r}|${id}">${t('pUse')}</button></div>`).join('')}</div>
+  <div class="card"><h4>${t('pScen')}</h4>${[['sc1','B-10',''],['sc2','D-12','RJA 3381'],['sc3','C-01','TBN 7742']].map(([k,sp,pl])=>`<div class="scen"><span class="grow">${t(k)}</span><button class="btn small ghost" data-act="scenario" data-arg="${sp}|${pl}">${t('pTry')}</button></div>`).join('')}</div>
+  <div class="card"><h4>${t('pRules')}</h4><ul class="rules">${['r1','r2','r3','r4','r5','r6'].map(k=>`<li>${t(k)}</li>`).join('')}</ul></div>
+  <div class="card"><h4>${t('pLegend')}</h4>${legend()}</div>
+  </aside>`;
+}
+
+/* ================= render ================= */
+const app=document.getElementById('app');
+function render(){
+  const keep={},vals={};app.querySelectorAll('[data-scroll]').forEach(el=>keep[el.dataset.scroll]=el.scrollTop);
+  app.querySelectorAll('select[id],input[id]:not([type=checkbox]):not([type=radio])').forEach(el=>{vals[el.id]=el.value;});
+  document.documentElement.lang=lang;document.documentElement.dir=lang==='ar'?'rtl':'ltr';
+  document.title=t('app')+' — '+(lang==='ar'?'نموذج أولي':'Prototype');
+  const roleBtn=(r,i,l,k)=>`<button class="${ui.role===r?'on':''}" data-act="role" data-arg="${r}">${ic(i)}${t(l)} <small>· ${t(k)}</small></button>`;
+  const dev=ui.role==='admin'?adminApp():`<div class="phone"><div class="screen">${ui.role==='student'?studentApp():officerApp()}</div></div>`;
+  app.innerHTML=`<header class="top"><div class="brand"><span class="logo">P</span><span>${t('app')}<small>${t('proto')}</small></span></div>
+  <nav class="roles" aria-label="Role">${roleBtn('student','phone','roleStudent','mobile')}${roleBtn('officer','shield','roleOfficer','mobile')}${roleBtn('admin','monitor','roleAdmin','web')}</nav>
+  <button class="langbtn" data-act="lang">${ic('globe')}${t('langBtn')}</button></header>
+  <main class="stage"><div class="devwrap">${dev}</div>${panel()}</main>`;
+  app.querySelectorAll('[data-scroll]').forEach(el=>{if(keep[el.dataset.scroll])el.scrollTop=keep[el.dataset.scroll];});
+  if(!freshVals)Object.keys(vals).forEach(id=>{const el=document.getElementById(id);if(el&&el.tagName==='SELECT'&&id!=='fLot'&&[...el.options].some(o=>o.value===vals[id]))el.value=vals[id];else if(el&&el.tagName==='INPUT'&&el.type!=='password'&&!el.readOnly&&id!=='uq'&&vals[id]&&!el.value)el.value=vals[id];});
+  freshVals=false;
+  if(ui.admin.scrollTo){const r=document.getElementById('row-'+ui.admin.scrollTo);if(r)r.scrollIntoView({block:'center'});ui.admin.scrollTo=null;}
+  lastSig=sig();
+}
+function updateLive(){
+  const n=now();
+  app.querySelectorAll('[data-cd]').forEach(el=>{el.textContent=fmtClock(+el.dataset.cd-n);});
+  app.querySelectorAll('[data-up]').forEach(el=>{el.textContent=fmtClock(n-+el.dataset.up);});
+  const c=app.querySelector('[data-clock]');if(c)c.textContent=fmtT(n);
+}
+
+/* ================= actions ================= */
+const A={
+  role(r){ui.role=r;},
+  lang(){lang=lang==='ar'?'en':'ar';try{localStorage.setItem(LS+'-lang',lang);}catch(e){}},
+  go(k){const st=ui.student;st.sheet=null;st.screen=k;if(k==='alerts'){const s=S.sessions.student;S.notif.forEach(x=>{if(x.uid===s.uid)x.read=true;});}},
+  lotmap(l){ui.student.lot=l;ui.student.screen='map';},
+  lot(l){ui.student.lot=l;},
+  pickB(b){ui.student.autoB=b;ui.student.screen='auto';},
+  mapBld(b){ui.student.autoB=b;ui.student.screen='auto';},
+  spot(id){ui.student.sheet={type:'spot',spot:id};},
+  closeSheet(){ui.student.sheet=null;ui.officer.sheet=null;},
+  reserveNow(id){const s=S.sessions.student;const r=book(s.uid,id,now());ui.student.sheet=r.ok?{type:'result',ok:true,rid:r.r.id}:{type:'result',ok:false,why:r.why};},
+  reserve(id){const s=S.sessions.student;const v=(document.getElementById('startSel')||{}).value||'now';const r=book(s.uid,id,v==='now'?now():+v);ui.student.sheet=r.ok?{type:'result',ok:true,rid:r.r.id}:{type:'result',ok:false,why:r.why};},
+  checkin(rid){const r=S.res.find(x=>x.id===rid);const n=now();if(r&&r.status==='booked'&&n>=r.start-EARLY&&n<=r.start+GRACE){r.status='active';r.checkIn=n;notify(r.uid,'n_in',{spot:r.spot});toast('student',t('n_in',{spot:r.spot}));}},
+  extend(rid){const r=S.res.find(x=>x.id===rid);if(!r)return;const ok=extendRes(rid);const last=S.notif[S.notif.length-1];toast('student',notifText(last),!ok);},
+  cancelAsk(rid){ui.student.sheet={type:'cancel',rid};},
+  cancel(rid){const r=S.res.find(x=>x.id===rid);if(r&&r.status==='booked'){r.status='cancelled';notify(r.uid,'n_cancelled',{spot:r.spot});toast('student',t('n_cancelled',{spot:r.spot}));}ui.student.sheet=null;},
+  checkout(rid){const r=S.res.find(x=>x.id===rid);if(r&&r.status==='active'){r.status='done';r.checkOut=now();notify(r.uid,'n_out',{spot:r.spot});toast('student',t('n_out',{spot:r.spot}));}},
+  dir(){return 'nochange';},
+  logout(role){S.sessions[role]=null;ui[role].expired=false;ui[role].err=null;},
+  /* officer */
+  oGo(k){ui.officer.screen=k;ui.officer.sheet=null;},
+  oSpot(id){ui.officer.sheet={spot:id};},
+  oLot(l){ui.officer.lot=l;},
+  oVerifyFrom(id){const o=ui.officer;o.sheet=null;o.screen='verify';o.v={step:'form',spot:id,plate:'',res:null,type:null,done:null};},
+  oIn(id){const n=now();const r=S.res.find(x=>x.spot===id&&x.status==='booked'&&x.start-EARLY<=n);
+    if(r){r.status='active';r.checkIn=n;r.by='officer';notify(r.uid,'n_mIn',{spot:id});toast('officer',t('m_inDone'));}else toast('officer',t('m_noBooked'),true);},
+  oOut(id){const sp=spotById(id),n=now();const r=S.res.find(x=>x.spot===id&&x.status==='active');
+    if(r){r.status='done';r.checkOut=n;notify(r.uid,'n_mOut',{spot:id});toast('officer',t('m_outDone'));}
+    else if(sp.manualOcc){sp.manualOcc=null;toast('officer',t('m_outDone'));}else toast('officer',t('m_alreadyFree'));},
+  oSet(arg){const [id,v]=arg.split('|');const sp=spotById(id);const st=spotState(sp);
+    if(st.k==='taken'){toast('officer',v==='free'?t('m_useCheckout'):t('m_hasRes'),true);return;}
+    if(v==='occ'){if(!sp.manualOcc)sp.manualOcc={since:now()};}else sp.manualOcc=null;
+    if(sp.maint&&v==='free'){/* maintenance is admin-only */}
+    toast('officer',t('m_statusDone'));},
+  oConfirm(){ui.officer.v.step='type';},
+  oBackRes(){ui.officer.v.step='result';},
+  oNoViol(){const v=ui.officer.v;v.step='done';v.done={none:true};},
+  oReset(){ui.officer.v={step:'form',spot:'',plate:'',res:null,type:null,done:null};},
+  scenario(arg){const [sp,pl]=arg.split('|');ensureScenario(sp);ui.role='officer';if(!S.sessions.officer)S.sessions.officer={uid:'SO-1001',exp:endOfWeek(now())};const o=ui.officer;o.sheet=null;o.screen='verify';o.v={step:'form',spot:sp,plate:pl,res:null,type:null,done:null};},
+  /* admin */
+  aGo(k){ui.admin.screen=k;ui.admin.modal=null;},
+  aSpotJump(id){const a=ui.admin;a.screen='spots';a.lot=id.split('-')[0];a.flash=id;a.scrollTo=id;},
+  aAcc(id){const sp=spotById(id);sp.acc=!sp.acc;toast('admin',t('spotSaved',{s:id}));},
+  aMaint(id){const sp=spotById(id);if(!sp.maint&&S.res.some(r=>r.spot===id&&r.status==='active')){toast('admin',t('cannotDel'),true);return;}sp.maint=!sp.maint;toast('admin',t('spotSaved',{s:id}));},
+  aDelSpot(id){ui.admin.modal={type:'delSpot',id};},
+  aDelSpotOk(id){if(S.res.some(r=>r.spot===id&&isOpen(r))){ui.admin.modal.err='cannotDel';return;}S.spots=S.spots.filter(s=>s.id!==id);ui.admin.modal=null;toast('admin',t('spotDeleted',{s:id}));},
+  aElig(id){const u=user(id);u.eligible=!u.eligible;toast('admin',t('userSaved'));},
+  aSusp(id){const u=user(id);u.suspended=!u.suspended;if(u.suspended)['student','officer','admin'].forEach(r=>{if(S.sessions[r]&&S.sessions[r].uid===id&&r!=='admin')S.sessions[r]=null;});toast('admin',t('userSaved'));},
+  aUserNew(){ui.admin.modal={type:'user',id:null};},
+  aUserEdit(id){ui.admin.modal={type:'user',id};},
+  aDelUser(id){ui.admin.modal={type:'delUser',id};},
+  aDelUserOk(id){if(openRes(id)){ui.admin.modal.err='userHasRes';return;}if(S.sessions.admin&&S.sessions.admin.uid===id)return;S.users=S.users.filter(u=>u.id!==id);['student','officer'].forEach(r=>{if(S.sessions[r]&&S.sessions[r].uid===id)S.sessions[r]=null;});ui.admin.modal=null;toast('admin',t('userDeleted'));},
+  aClose(){ui.admin.modal=null;},
+  /* demo */
+  time(m){S.offset+=(+m)*MIN;},
+  nextWeek(){const n=now();const d=new Date(n);d.setDate(d.getDate()+((7-d.getDay())%7||7));d.setHours(7,30,0,0);
+    S.res.forEach(r=>{if(r.status==='active'){r.status='done';r.checkOut=r.end;}else if(r.status==='booked'){r.status=r.fake?'done':'noshow';}});
+    S.spots.forEach(sp=>sp.manualOcc=null);
+    S.offset+=d.getTime()-n;seedOccupancy(now());},
+  reset(){try{localStorage.removeItem(LS);}catch(e){}seed();ui.student=Object.assign(ui.student,{screen:'home',sheet:null,autoB:null,lot:'all',err:null,expired:false});ui.officer=Object.assign(ui.officer,{screen:'map',sheet:null,err:null,expired:false});ui.officer.v={step:'form',spot:'',plate:'',res:null,type:null,done:null};ui.admin=Object.assign(ui.admin,{screen:'dash',modal:null,err:null,expired:false});},
+  quick(arg){const [role,id]=arg.split('|');const u=user(id);if(!u)return;if(u.suspended){ui.role=role;ui[role].err='suspended';return;}S.sessions[role]={uid:id,exp:endOfWeek(now())};ui.role=role;ui[role].err=null;ui[role].expired=false;if(role==='student'){ui.student.screen='home';ui.student.sheet=null;}}
+};
+const F={
+  login(f){const role=f.dataset.role;const id=f.uid.value.trim(),pw=f.pw.value;const u=S.users.find(x=>x.id.toLowerCase()===id.toLowerCase()&&x.role===role);
+    if(!u||u.pw!==pw){ui[role].err='badLogin';return;}if(u.suspended){ui[role].err='suspended';return;}
+    S.sessions[role]={uid:u.id,exp:endOfWeek(now())};ui[role].err=null;ui[role].expired=false;if(role==='student')ui.student.screen='home';},
+  verify(f){const o=ui.officer;o.v.spot=f.spot.value;o.v.plate=f.plate.value;if(!o.v.spot)return;o.v.res=verify(o.v.spot,o.v.plate);o.v.step='result';},
+  issue(f){const o=ui.officer,R=o.v.res,type=(f.querySelector('input[name=vt]:checked')||{}).value||'v_overstay';
+    const plate=f.plate.value.trim().toUpperCase();
+    let uid=null;const po=plate?S.users.find(u=>u.plate&&u.plate.toUpperCase()===plate):null;if(po)uid=po.id;
+    if(!uid&&type==='v_overstay'&&R.st.k==='taken')uid=R.st.r.uid;
+    if(!plate&&!uid){toast('officer',t('needPlate'),true);return;}
+    const v={id:++S.seq,type,spot:R.spot,plate:plate||(uid?user(uid).plate:''),uid,by:S.sessions.officer.uid,t:now(),note:f.note.value.trim()};
+    S.viol.push(v);if(uid)notify(uid,'n_viol',{type,spot:R.spot});
+    if(f.release.checked){const sp=spotById(R.spot);const r=S.res.find(x=>x.spot===R.spot&&x.status==='active');if(r){r.status='done';r.checkOut=now();}if(sp)sp.manualOcc=null;}
+    o.v.step='done';o.v.done={type,uid,plate:v.plate};},
+  addSpot(f){const lot=f.lot.value;const LL=LOTS.find(l=>l.id===lot);const used=S.spots.filter(s=>s.lot===lot).map(s=>s.slot);let slot=-1;for(let i=0;i<cap(LL);i++)if(!used.includes(i)){slot=i;break;}
+    if(slot<0){toast('admin',t('lotFull'),true);return;}const id=lot+'-'+pad(slot+1);S.spots.push({id,lot,slot,acc:f.acc.checked,maint:false,manualOcc:null});
+    S.spots.sort((a,b)=>a.lot===b.lot?a.slot-b.slot:a.lot<b.lot?-1:1);ui.admin.lot=lot;ui.admin.flash=id;ui.admin.scrollTo=id;toast('admin',t('spotAdded',{s:id}));},
+  user(f){const m=ui.admin.modal;const id=f.fid.value.trim(),name=f.fname.value.trim(),pw=f.pw.value;
+    if(!id||!name||!pw){m.err='fillReq';return;}
+    if(!m.id&&user(id)){m.err='idTaken';return;}
+    const data={pw,role:f.role.value,plate:f.plate.value.trim().toUpperCase(),eligible:f.elig.checked};
+    if(m.id){const u=user(m.id);Object.assign(u,data);u.name[lang]=name;}
+    else S.users.unshift(Object.assign({id,name:{en:name,ar:name},suspended:false,fake:false},data));
+    ui.admin.modal=null;toast('admin',t('userSaved'));}
+};
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-act]');if(!el||!app.contains(el))return;
+  if(el.dataset.self&&e.target!==el)return;
+  const fn=A[el.dataset.act];if(!fn)return;
+  if(el.tagName!=='A')e.preventDefault();
+  if(el.hasAttribute('disabled'))return;
+  const r=fn(el.dataset.arg,el,e);
+  if(r==='nochange')return;
+  freshVals=true;engine();save();render();
+});
+document.addEventListener('submit',e=>{const f=e.target;const fn=F[f.dataset.form];if(!fn)return;e.preventDefault();fn(f);freshVals=true;engine();save();render();});
+document.addEventListener('change',e=>{const el=e.target.closest('[data-change]');if(!el)return;
+  if(el.dataset.change==='inclAcc')ui.student.inclAcc=el.checked;
+  if(el.dataset.change==='aLot'){ui.admin.lot=el.value;ui.admin.flash=null;}
+  render();});
+document.addEventListener('input',e=>{const el=e.target.closest('[data-input]');if(!el)return;
+  if(el.dataset.input==='aQ'){ui.admin.q=el.value;const pos=el.selectionStart;render();const n=document.getElementById('uq');if(n){n.focus();n.setSelectionRange(pos,pos);}}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&(ui.student.sheet||ui.officer.sheet||ui.admin.modal)){ui.student.sheet=null;ui.officer.sheet=null;ui.admin.modal=null;render();}});
+
+/* ================= loop ================= */
+let lastSig='',pending=false,freshVals=false;
+function busy(){const a=document.activeElement;return a&&app.contains(a)&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName);}
+load();engine();render();
+setInterval(()=>{
+  const ch=engine();const sg=sig();
+  if(ch||sg!==lastSig||pending){save();if(busy()){pending=true;updateLive();}else{pending=false;render();}}
+  else updateLive();
+},1000);
+})();
+</script>
+</body>
+</html>
